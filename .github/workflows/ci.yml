@@ -70,5 +70,5 @@ jobs:
         with:
           path: ~/.platformio
           key: pio-${{ hashFiles('firmware/platformio.ini') }}
-      - run: pip install platformio
+      - run: pip install 'platformio>=6.1,<7'
       - run: cd firmware && pio run
