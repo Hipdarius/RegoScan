@@ -34,3 +34,10 @@ inline-define most acronyms on first use; this is the long version.
 | **G12180-010A** | Hamamatsu InGaAs photodiode. 1 mm active area. SWIR 940 / 1050 nm sensing. |
 | **C12880MA "dark frame"** | Spectrum captured with all illumination off — subtracted from each measurement to remove dark-current bias. |
 | **Spectralon / BaSO₄** | Near-ideal-Lambertian white reference puck (≥ 99 % reflectance). The white-reference division anchor. |
+
+
+## See also
+
+- `docs/data-format.md` for the canonical CSV column order.
+- `docs/brand-guide.md` for visual-identity tokens.
+- `docs/release-checklist.md` for the pre-tag verification list.
