@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="web/public/favicon.svg" width="80" alt="VERA logo" />
+<img src="web/public/logo/vera-readme.svg" width="120" alt="VERA logo" />
 
 # VERA
 

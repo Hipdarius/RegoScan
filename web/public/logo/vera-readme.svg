@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none" role="img" aria-label="VERA logo">
+  <title>VERA logo</title>
+  <desc>VERA mark on a white rounded background. Bold V letterform with an amber spectral arc, a crescent moon, and a teal lunar horizon.</desc>
+
+  <rect x="0" y="0" width="240" height="240" rx="32" ry="32" fill="#ffffff"/>
+
+  <g transform="translate(0,10)">
+    <path d="M 16 200 Q 120 232 224 200" stroke="#38b3c4" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M 10 175 Q 120 0 230 85" stroke="#f5b840" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M 200 24 a 18 18 0 1 0 0 36 a 13 18 0 1 0 0 -36 z" fill="#c8d3da"/>
+    <path d="M 40 28 L 76 28 L 120 121 L 164 28 L 200 28 L 120 198 Z" fill="#0a0d14"/>
+  </g>
+</svg>
