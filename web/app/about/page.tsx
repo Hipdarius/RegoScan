@@ -185,7 +185,7 @@ export default function AboutPage() {
                 <StatusRow state="ok" label="Uncertainty + 4-state classifier · ECE ≤ 1.5 %" status="DONE" />
                 <StatusRow state="ok" label="OOD detector · SAM/CNN disagreement signal" status="DONE" />
                 <StatusRow state="ok" label="Active learning · ≈ 2× annotation efficiency" status="DONE" />
-                <StatusRow state="ok" label="FastAPI service + Next.js console · 214 tests" status="DONE" />
+                <StatusRow state="ok" label="FastAPI inference service + Next.js mission console · 214 tests" status="DONE" />
               </ul>
             }
             right={
