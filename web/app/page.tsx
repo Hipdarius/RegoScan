@@ -187,6 +187,8 @@ export default function Home() {
                 wavelengths={meta?.wavelengths_nm ?? null}
                 spectrum={scan?.spec ?? null}
                 endmembers={endmembers}
+                as7265x={scan?.as7265x}
+                as7265xBands={meta?.as7265x_bands_nm}
               />
               <div
                 className="mt-3 flex flex-wrap gap-4 font-mono text-[10px] uppercase tracking-widest"

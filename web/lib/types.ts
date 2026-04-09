@@ -14,12 +14,14 @@ export interface PredictionResponse {
   ilmenite_fraction: number;
   confidence: number;
   model_version: string;
+  as7265x?: number[];
 }
 
 export interface DemoResponse extends PredictionResponse {
   spec: number[];
   led: number[];
   lif_450lp: number;
+  as7265x?: number[];
   true_class: string;
   true_ilmenite_fraction: number;
 }
@@ -33,6 +35,8 @@ export interface MetaResponse {
   model_loaded: boolean;
   model_sha256: string | null;
   model_run_dir: string | null;
+  sensor_mode?: string;
+  as7265x_bands_nm?: number[];
 }
 
 export interface EndmembersResponse {
