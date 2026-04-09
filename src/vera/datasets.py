@@ -23,12 +23,13 @@ from torch.utils.data import Dataset
 
 from vera.augment import AugmentConfig, augment_spectrum
 from vera.io_csv import (
+    extract_as7265x,
     extract_labels,
     extract_leds,
     extract_lif,
     extract_spectra,
 )
-from vera.schema import N_SPEC
+from vera.schema import AS7265X_COLS, N_AS7265X, N_SPEC, get_feature_count
 
 
 # ---------------------------------------------------------------------------
@@ -130,19 +131,43 @@ def sample_level_split(
 class NumpyBundle:
     """Pre-extracted arrays in canonical order."""
 
-    spectra: np.ndarray  # (N, 288)
-    leds: np.ndarray     # (N, 12)
-    lif: np.ndarray      # (N,)
-    class_idx: np.ndarray  # (N,) int64
-    ilmenite: np.ndarray   # (N,) float64
-    sample_ids: np.ndarray  # (N,) object
+    spectra: np.ndarray      # (N, 288)
+    leds: np.ndarray         # (N, 12)
+    lif: np.ndarray          # (N,)
+    class_idx: np.ndarray    # (N,) int64
+    ilmenite: np.ndarray     # (N,) float64
+    sample_ids: np.ndarray   # (N,) object
+    as7265x: np.ndarray | None = None  # (N, 18) or None
+    sensor_mode: str = "full"
 
 
-def to_bundle(df: pd.DataFrame) -> NumpyBundle:
+def to_bundle(df: pd.DataFrame, sensor_mode: str | None = None) -> NumpyBundle:
+    """Build a :class:`NumpyBundle` from a validated DataFrame.
+
+    Parameters
+    ----------
+    sensor_mode : str, optional
+        If not provided, auto-detected from the DataFrame columns.
+        When the frame has ``as7_*`` columns they are extracted;
+        otherwise ``as7265x`` is set to ``None``.
+    """
     spectra = extract_spectra(df)
     leds = extract_leds(df)
     lif = extract_lif(df)
     class_idx, ilmenite = extract_labels(df)
+
+    # Auto-detect sensor mode from columns if not specified
+    if sensor_mode is None:
+        has_as7 = AS7265X_COLS[0] in df.columns
+        if has_as7:
+            sensor_mode = "combined"
+        else:
+            sensor_mode = "full"
+
+    as7_data: np.ndarray | None = None
+    if sensor_mode in ("multispectral", "combined") and AS7265X_COLS[0] in df.columns:
+        as7_data = extract_as7265x(df)
+
     return NumpyBundle(
         spectra=spectra,
         leds=leds,
@@ -150,14 +175,18 @@ def to_bundle(df: pd.DataFrame) -> NumpyBundle:
         class_idx=class_idx,
         ilmenite=ilmenite,
         sample_ids=df["sample_id"].to_numpy(),
+        as7265x=as7_data,
+        sensor_mode=sensor_mode,
     )
 
 
-def split_bundle(df: pd.DataFrame, split: SplitIndices) -> dict[str, NumpyBundle]:
+def split_bundle(
+    df: pd.DataFrame, split: SplitIndices, sensor_mode: str | None = None
+) -> dict[str, NumpyBundle]:
     return {
-        "train": to_bundle(df.loc[split.train]),
-        "val": to_bundle(df.loc[split.val]),
-        "test": to_bundle(df.loc[split.test]),
+        "train": to_bundle(df.loc[split.train], sensor_mode=sensor_mode),
+        "val": to_bundle(df.loc[split.val], sensor_mode=sensor_mode),
+        "test": to_bundle(df.loc[split.test], sensor_mode=sensor_mode),
     }
 
 
@@ -169,10 +198,15 @@ def split_bundle(df: pd.DataFrame, split: SplitIndices) -> dict[str, NumpyBundle
 class RegoscanSpectraDataset(Dataset):
     """Per-measurement Dataset that returns ``(features, class_idx, ilm)``.
 
-    ``features`` is a (1, K) float32 tensor where K = 288 + 12 + 1 = 301
-    (spectrum + LEDs + LIF), suitable for ``Conv1d`` with one input channel.
-    Augmentation is applied **only to the spectrometer block**, never to the
-    LEDs or LIF.
+    ``features`` is a ``(1, K)`` float32 tensor suitable for ``Conv1d``
+    with one input channel. ``K`` depends on the sensor mode:
+
+    * ``"full"``: K = 288 + 12 + 1 = 301  (spectrum + LEDs + LIF)
+    * ``"multispectral"``: K = 18 + 12 + 1 = 31  (AS7265x + LEDs + LIF)
+    * ``"combined"``: K = 288 + 18 + 12 + 1 = 319
+
+    Augmentation is applied **only to the spectrometer block**, never to
+    the LEDs, LIF, or AS7265x channels.
     """
 
     def __init__(
@@ -189,6 +223,10 @@ class RegoscanSpectraDataset(Dataset):
         self.class_idx = bundle.class_idx.astype(np.int64)
         self.ilmenite = bundle.ilmenite.astype(np.float32)
         self.sample_ids = np.asarray(bundle.sample_ids)
+        self.sensor_mode = bundle.sensor_mode
+        self.as7265x: np.ndarray | None = (
+            bundle.as7265x.astype(np.float32) if bundle.as7265x is not None else None
+        )
         self.augment = augment
         self.augment_cfg = augment_cfg or AugmentConfig()
         self._rng = np.random.default_rng(seed)
@@ -202,9 +240,18 @@ class RegoscanSpectraDataset(Dataset):
             spec = augment_spectrum(spec, self._rng, self.augment_cfg).astype(
                 np.float32
             )
-        feats = np.concatenate([spec, self.leds[idx], np.array([self.lif[idx]])])
-        feats = feats.astype(np.float32)
-        feats_t = torch.from_numpy(feats).unsqueeze(0)  # (1, 301)
+
+        # Build the feature vector based on sensor_mode
+        parts: list[np.ndarray] = []
+        if self.sensor_mode in ("full", "combined"):
+            parts.append(spec)
+        if self.sensor_mode in ("multispectral", "combined") and self.as7265x is not None:
+            parts.append(self.as7265x[idx])
+        parts.append(self.leds[idx])
+        parts.append(np.array([self.lif[idx]], dtype=np.float32))
+
+        feats = np.concatenate(parts).astype(np.float32)
+        feats_t = torch.from_numpy(feats).unsqueeze(0)  # (1, K)
         return (
             feats_t,
             torch.tensor(int(self.class_idx[idx]), dtype=torch.long),

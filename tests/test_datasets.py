@@ -42,12 +42,17 @@ def _toy_endmembers() -> Endmembers:
     return Endmembers(wavelengths_nm=lam, spectra=spectra, source="toy")
 
 
-def _toy_df(n_samples: int = 25, m_per_sample: int = 4) -> pd.DataFrame:
+def _toy_df(
+    n_samples: int = 25,
+    m_per_sample: int = 4,
+    sensor_mode: str = "full",
+) -> pd.DataFrame:
     measurements = synth_dataset(
         _toy_endmembers(),
         n_samples=n_samples,
         measurements_per_sample=m_per_sample,
         seed=0,
+        sensor_mode=sensor_mode,
     )
     return pd.DataFrame([m.to_row() for m in measurements])
 
@@ -185,3 +190,60 @@ def test_torch_dataset_augmentation_changes_spectrum_block():
         float(bundle.lif[0]),
         atol=1e-6,
     )
+
+
+# ---------------------------------------------------------------------------
+# AS7265x dual-sensor support (v1.1)
+# ---------------------------------------------------------------------------
+
+from vera.schema import N_AS7265X, get_feature_count
+
+
+def test_to_bundle_combined_has_as7265x():
+    df = _toy_df(n_samples=6, m_per_sample=2, sensor_mode="combined")
+    b = to_bundle(df, sensor_mode="combined")
+    assert b.as7265x is not None
+    assert b.as7265x.shape == (len(df), N_AS7265X)
+    assert b.sensor_mode == "combined"
+
+
+def test_to_bundle_full_backward_compat():
+    df = _toy_df(n_samples=6, m_per_sample=2, sensor_mode="full")
+    b = to_bundle(df, sensor_mode="full")
+    assert b.as7265x is None
+    assert b.sensor_mode == "full"
+    assert b.spectra.shape == (len(df), N_SPEC)
+    assert b.leds.shape == (len(df), N_LED)
+    assert b.lif.shape == (len(df),)
+
+
+def test_torch_dataset_combined_feature_shape():
+    df = _toy_df(n_samples=4, m_per_sample=2, sensor_mode="combined")
+    bundle = to_bundle(df, sensor_mode="combined")
+    ds = RegoscanSpectraDataset(bundle, augment=False)
+    feats, cls, ilm = ds[0]
+    expected = get_feature_count("combined")  # 319
+    assert feats.shape == (1, expected)
+    assert feats.dtype == torch.float32
+
+
+def test_torch_dataset_multispectral_feature_shape():
+    df = _toy_df(n_samples=4, m_per_sample=2, sensor_mode="combined")
+    bundle = to_bundle(df, sensor_mode="combined")
+    # Override sensor_mode on the bundle to "multispectral" to test
+    # that the Dataset only uses as7265x + led + lif
+    bundle_ms = NumpyBundle(
+        spectra=bundle.spectra,
+        leds=bundle.leds,
+        lif=bundle.lif,
+        class_idx=bundle.class_idx,
+        ilmenite=bundle.ilmenite,
+        sample_ids=bundle.sample_ids,
+        as7265x=bundle.as7265x,
+        sensor_mode="multispectral",
+    )
+    ds = RegoscanSpectraDataset(bundle_ms, augment=False)
+    feats, cls, ilm = ds[0]
+    expected = get_feature_count("multispectral")  # 31
+    assert feats.shape == (1, expected)
+    assert feats.dtype == torch.float32

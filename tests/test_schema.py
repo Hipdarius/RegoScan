@@ -97,13 +97,16 @@ def _good_measurement(**overrides) -> Measurement:
 def test_measurement_round_trip_to_row_and_back():
     m = _good_measurement()
     row = m.to_row()
-    assert set(row.keys()) == set(ALL_COLUMNS)
+    # to_row() emits ALL_COLUMNS plus sensor_mode
+    expected_keys = set(ALL_COLUMNS) | {"sensor_mode"}
+    assert set(row.keys()) == expected_keys
     m2 = Measurement.from_row(row)
     assert m2.sample_id == m.sample_id
     assert m2.spec == m.spec
     assert m2.led == m.led
     assert m2.lif_450lp == m.lif_450lp
     assert m2.mineral_class == m.mineral_class
+    assert m2.sensor_mode == "full"
 
 
 def test_measurement_rejects_bad_class():
@@ -162,7 +165,9 @@ def _good_df(n: int = 3) -> pd.DataFrame:
             lif_450lp=float(rng.uniform(0.1, 0.9)),
         )
         rows.append(m.to_row())
-    return pd.DataFrame(rows, columns=list(ALL_COLUMNS))
+    # Use ALL_COLUMNS order but keep sensor_mode if present
+    cols = list(ALL_COLUMNS)
+    return pd.DataFrame(rows)[cols]
 
 
 def test_validate_good_dataframe_passes():
@@ -269,3 +274,110 @@ def test_extract_labels_returns_indices_and_fractions():
     assert ilm.dtype == np.float64
     assert idx[0] == 0  # ilmenite_rich is class 0
     assert ilm[0] == pytest.approx(0.9)
+
+
+# ---------------------------------------------------------------------------
+# AS7265x dual-sensor support (v1.1)
+# ---------------------------------------------------------------------------
+
+
+from vera.schema import (
+    AS7265X_BANDS,
+    AS7265X_COLS,
+    N_AS7265X,
+    SCHEMA_VERSION,
+    columns_for_mode,
+    get_feature_count,
+)
+
+
+def test_as7265x_bands_shape_and_endpoints():
+    assert len(AS7265X_BANDS) == 18
+    assert AS7265X_BANDS[0] == 410
+    assert AS7265X_BANDS[-1] == 940
+
+
+def test_n_as7265x_constant():
+    assert N_AS7265X == 18
+
+
+def test_as7265x_cols_format():
+    assert AS7265X_COLS[0] == "as7_410"
+    assert AS7265X_COLS[1] == "as7_435"
+    assert AS7265X_COLS[-1] == "as7_940"
+    assert len(AS7265X_COLS) == 18
+    for col, band in zip(AS7265X_COLS, AS7265X_BANDS):
+        assert col == f"as7_{band}"
+
+
+def test_get_feature_count_full():
+    assert get_feature_count("full") == 301
+
+
+def test_get_feature_count_multispectral():
+    assert get_feature_count("multispectral") == 31
+
+
+def test_get_feature_count_combined():
+    assert get_feature_count("combined") == 319
+
+
+def test_get_feature_count_invalid_mode():
+    with pytest.raises(ValueError, match="Unknown sensor_mode"):
+        get_feature_count("bogus")
+
+
+def test_schema_version_is_1_1_0():
+    assert SCHEMA_VERSION == "1.1.0"
+
+
+def test_measurement_with_as7265x_none_validates():
+    """Backward compat: as7265x=None must be accepted."""
+    m = _good_measurement(as7265x=None)
+    assert m.as7265x is None
+
+
+def test_measurement_rejects_wrong_as7265x_length():
+    with pytest.raises(Exception):
+        _good_measurement(as7265x=[0.5] * 10)
+
+
+def test_measurement_with_correct_as7265x_validates():
+    m = _good_measurement(as7265x=[0.5] * 18)
+    assert len(m.as7265x) == 18
+
+
+def test_measurement_to_row_includes_sensor_mode():
+    m = _good_measurement()
+    row = m.to_row()
+    assert "sensor_mode" in row
+    assert row["sensor_mode"] == "full"
+
+
+def test_columns_for_mode_full():
+    cols = columns_for_mode("full")
+    # 8 meta + sensor_mode + 288 spec + 12 LED + 1 LIF = 310
+    assert len(cols) == 8 + 1 + N_SPEC + N_LED + 1
+
+
+def test_columns_for_mode_multispectral():
+    cols = columns_for_mode("multispectral")
+    # 8 meta + sensor_mode + 18 AS7265x + 12 LED + 1 LIF = 40
+    assert len(cols) == 8 + 1 + N_AS7265X + N_LED + 1
+
+
+def test_columns_for_mode_combined():
+    cols = columns_for_mode("combined")
+    # 8 meta + sensor_mode + 288 spec + 18 AS7265x + 12 LED + 1 LIF = 328
+    assert len(cols) == 8 + 1 + N_SPEC + N_AS7265X + N_LED + 1
+
+
+def test_legacy_309_column_df_validates():
+    """Old v1.0 309-column DataFrames without sensor_mode or AS7265x
+    columns must still validate (backward compatibility)."""
+    df = _good_df(3)
+    # _good_df already strips sensor_mode; ensure no AS7265x cols exist
+    for c in AS7265X_COLS:
+        assert c not in df.columns
+    assert "sensor_mode" not in df.columns
+    validate_dataframe(df)  # must not raise

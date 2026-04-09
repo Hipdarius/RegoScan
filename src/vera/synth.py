@@ -18,12 +18,14 @@ from typing import Iterable
 import numpy as np
 
 from vera.schema import (
+    AS7265X_BANDS,
     LED_WAVELENGTHS_NM,
     MINERAL_CLASSES,
     Measurement,
     N_LED,
     N_SPEC,
     PACKING_DENSITIES,
+    SENSOR_MODES,
     WAVELENGTHS,
 )
 
@@ -196,6 +198,26 @@ def _led_response(spectrum: np.ndarray) -> np.ndarray:
     return out
 
 
+def _as7265x_response(spectrum: np.ndarray) -> np.ndarray:
+    """Simulate AS7265x 18-band readings via Gaussian bandpass integration.
+
+    Each AS7265x channel integrates the continuous spectrum through a
+    Gaussian filter centered on its band wavelength. FWHM = 20 nm per
+    the AS7265x datasheet, giving sigma = 20 / 2.355 ~= 8.49 nm.
+    """
+    sigma = 20.0 / (2.0 * np.sqrt(2.0 * np.log(2.0)))  # ~8.49 nm
+    out = np.empty(len(AS7265X_BANDS), dtype=np.float64)
+    lam = WAVELENGTHS
+    for i, center in enumerate(AS7265X_BANDS):
+        w = np.exp(-0.5 * ((lam - center) / sigma) ** 2)
+        wsum = w.sum()
+        if wsum < 1e-9:
+            out[i] = float(spectrum[-1]) * 0.85
+        else:
+            out[i] = float((w * spectrum).sum() / wsum)
+    return out
+
+
 def mixture_spectrum(fractions: np.ndarray, endmembers: Endmembers) -> np.ndarray:
     return fractions @ endmembers.spectra 
 
@@ -213,8 +235,23 @@ def synth_measurement(
     noise: NoiseConfig | None = None,
     timestamp: str | None = None,
     degradation_mask: np.ndarray | None = None,
+    sensor_mode: str = "combined",
 ) -> Measurement:
-    """Builds one fake measurement."""
+    """Builds one fake measurement.
+
+    Parameters
+    ----------
+    sensor_mode : str
+        One of ``"full"``, ``"multispectral"``, or ``"combined"``.
+        Controls whether AS7265x data is synthesised. The C12880MA
+        spectrum (``spec``) is always populated (the Measurement model
+        requires it). ``sensor_mode`` is stored on the output so
+        downstream code knows which channels to use for ML features.
+    """
+    if sensor_mode not in SENSOR_MODES:
+        raise ValueError(
+            f"Unknown sensor_mode: {sensor_mode!r}; expected one of {SENSOR_MODES}"
+        )
     if noise is None:
         noise = NoiseConfig()
     if integration_time_ms is None:
@@ -228,7 +265,7 @@ def synth_measurement(
 
     # Pipeline
     base = mixture_spectrum(fractions, endmembers)
-    
+
     # Noise model
     gain = 1.0 + rng.normal(0.0, noise.gain_sigma, size=N_SPEC)
     spec = base * gain
@@ -263,6 +300,19 @@ def synth_measurement(
     lif += rng.normal(0.0, noise.lif_noise_sigma)
     lif = float(max(lif, 0.0))
 
+    # --- AS7265x channels (when requested) ---
+    as7265x_data: list[float] | None = None
+    if sensor_mode in ("multispectral", "combined"):
+        # 20 nm FWHM Gaussian bandpass integration
+        as7_clean = _as7265x_response(base * intensity)
+        # +/-12% multiplicative uniform noise (AS7265x datasheet accuracy spec)
+        as7_noise = rng.uniform(0.88, 1.12, size=len(AS7265X_BANDS))
+        as7 = as7_clean * as7_noise
+        # 16-bit ADC quantization
+        as7 = np.round(as7 * 65535.0) / 65535.0
+        as7 = np.clip(as7, 0.0, 1.5)
+        as7265x_data = [float(x) for x in as7]
+
     return Measurement(
         sample_id=sample_id,
         measurement_id=str(uuid.UUID(bytes=bytes(rng.bytes(16)))),
@@ -272,9 +322,11 @@ def synth_measurement(
         integration_time_ms=int(integration_time_ms),
         ambient_temp_c=float(ambient_temp_c),
         packing_density=packing_density,  # type: ignore
+        sensor_mode=sensor_mode,  # type: ignore
         spec=[float(x) for x in spec],
         led=[float(x) for x in led],
         lif_450lp=lif,
+        as7265x=as7265x_data,
     )
 
 
@@ -286,13 +338,14 @@ def synth_sample(
     n_measurements: int,
     rng: np.random.Generator,
     noise: NoiseConfig | None = None,
+    sensor_mode: str = "combined",
 ) -> list[Measurement]:
     """Generate ``n_measurements`` measurements for one (sample, class) pair.
 
     Composition is fixed once per sample so that all measurements of the
     same sample share the same ilmenite fraction (modulo measurement noise).
     A sensor degradation mask is also fixed per sample, so the same dead/
-    hot pixels persist across a sample's measurements — matching real
+    hot pixels persist across a sample's measurements -- matching real
     hardware where pixel aging is slow compared to measurement cadence.
     """
     cfg = noise or NoiseConfig()
@@ -309,6 +362,7 @@ def synth_sample(
                 rng=rng,
                 noise=cfg,
                 degradation_mask=degradation_mask,
+                sensor_mode=sensor_mode,
             )
         )
     return out
@@ -322,6 +376,7 @@ def synth_dataset(
     seed: int = 0,
     classes: Iterable[str] = MINERAL_CLASSES,
     noise: NoiseConfig | None = None,
+    sensor_mode: str = "combined",
 ) -> list[Measurement]:
     """Generate a complete synthetic dataset.
 
@@ -341,6 +396,7 @@ def synth_dataset(
                 n_measurements=measurements_per_sample,
                 rng=rng,
                 noise=noise,
+                sensor_mode=sensor_mode,
             )
         )
     return out
@@ -355,6 +411,7 @@ __all__ = [
     "load_endmembers",
     "fractions_for_class",
     "mixture_spectrum",
+    "_as7265x_response",
     "synth_measurement",
     "synth_sample",
     "synth_dataset",

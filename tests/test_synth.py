@@ -214,3 +214,110 @@ def test_dataset_round_trips_through_csv(tmp_path, endmembers):
     assert len(df) == 10
     # the LIF column must be present and finite
     assert df[LIF_COL].notna().all()
+
+
+# ---------------------------------------------------------------------------
+# AS7265x dual-sensor support (v1.1)
+# ---------------------------------------------------------------------------
+
+
+from vera.schema import N_AS7265X
+
+
+def test_synth_measurement_combined_produces_as7265x(endmembers):
+    rng = np.random.default_rng(42)
+    f = fractions_for_class("olivine_rich", rng)
+    m = synth_measurement(
+        sample_id="S0",
+        mineral_class="olivine_rich",
+        fractions=f,
+        endmembers=endmembers,
+        rng=rng,
+        sensor_mode="combined",
+    )
+    assert m.as7265x is not None
+    assert len(m.as7265x) == N_AS7265X
+    assert m.sensor_mode == "combined"
+
+
+def test_synth_measurement_full_has_no_as7265x(endmembers):
+    rng = np.random.default_rng(42)
+    f = fractions_for_class("olivine_rich", rng)
+    m = synth_measurement(
+        sample_id="S0",
+        mineral_class="olivine_rich",
+        fractions=f,
+        endmembers=endmembers,
+        rng=rng,
+        sensor_mode="full",
+    )
+    assert m.as7265x is None
+    assert m.sensor_mode == "full"
+
+
+def test_synth_dataset_combined_produces_correct_measurements(endmembers):
+    out = synth_dataset(
+        endmembers,
+        n_samples=5,
+        measurements_per_sample=2,
+        seed=0,
+        sensor_mode="combined",
+    )
+    assert len(out) == 10
+    for m in out:
+        assert isinstance(m, Measurement)
+        assert m.sensor_mode == "combined"
+        assert m.as7265x is not None
+        assert len(m.as7265x) == N_AS7265X
+        assert len(m.spec) == N_SPEC
+
+
+def test_as7265x_bandpass_values_in_reasonable_range(endmembers):
+    """AS7265x Gaussian bandpass values should be non-negative and
+    within the clipping range [0, 1.5]."""
+    rng = np.random.default_rng(99)
+    f = fractions_for_class("mixed", rng)
+    m = synth_measurement(
+        sample_id="S0",
+        mineral_class="mixed",
+        fractions=f,
+        endmembers=endmembers,
+        rng=rng,
+        sensor_mode="combined",
+    )
+    arr = np.asarray(m.as7265x)
+    assert (arr >= 0.0).all()
+    assert (arr <= 1.5).all()
+
+
+def test_as7265x_values_have_12_percent_noise_envelope(endmembers):
+    """The +/-12% multiplicative uniform noise should be visible:
+    repeating with the same spectrum but different RNG seeds should
+    produce values that scatter around the clean response."""
+    rng_base = np.random.default_rng(0)
+    f = fractions_for_class("pyroxene_rich", rng_base)
+
+    # Collect many noisy readings
+    as7_vals = []
+    for seed in range(50):
+        rng = np.random.default_rng(seed + 1000)
+        m = synth_measurement(
+            sample_id="S0",
+            mineral_class="pyroxene_rich",
+            fractions=f,
+            endmembers=endmembers,
+            rng=rng,
+            sensor_mode="combined",
+        )
+        as7_vals.append(m.as7265x)
+
+    arr = np.array(as7_vals)  # (50, 18)
+    # Per channel, compute the coefficient of variation
+    means = arr.mean(axis=0)
+    stds = arr.std(axis=0)
+    # 12% uniform noise -> std ~= 0.12/sqrt(3) ~= 0.069 * mean
+    # But additional noise sources (gain jitter, intensity, shot noise)
+    # push the total CV higher. Allow a generous window: > 1% and < 20%.
+    cv = stds / (means + 1e-12)
+    assert (cv > 0.01).all(), f"noise too small: cv = {cv}"
+    assert (cv < 0.20).all(), f"noise too large: cv = {cv}"

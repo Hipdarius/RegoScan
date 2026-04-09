@@ -14,14 +14,18 @@ import pandas as pd
 
 from vera.schema import (
     ALL_COLUMNS,
+    AS7265X_COLS,
     LED_COLS,
     LIF_COL,
     Measurement,
     MINERAL_CLASSES,
+    N_AS7265X,
     N_LED,
     N_SPEC,
     PACKING_DENSITIES,
+    SENSOR_MODES,
     SPEC_COLS,
+    columns_for_mode,
 )
 
 
@@ -34,23 +38,59 @@ class SchemaError(ValueError):
 # ---------------------------------------------------------------------------
 
 
+def _detect_sensor_mode(df: pd.DataFrame) -> str:
+    """Infer the sensor mode from the columns present in *df*.
+
+    Returns one of ``"full"``, ``"multispectral"``, or ``"combined"``.
+    If a ``sensor_mode`` column is present its first value is used;
+    otherwise the mode is inferred from the presence/absence of
+    spectrometer and AS7265x columns.
+    """
+    if "sensor_mode" in df.columns and len(df) > 0:
+        mode = str(df["sensor_mode"].iloc[0])
+        if mode in SENSOR_MODES:
+            return mode
+    has_spec = SPEC_COLS[0] in df.columns
+    has_as7 = AS7265X_COLS[0] in df.columns
+    if has_spec and has_as7:
+        return "combined"
+    if has_as7:
+        return "multispectral"
+    return "full"
+
+
 def validate_dataframe(df: pd.DataFrame) -> None:
     """Validate a DataFrame against the canonical schema.
 
     Cheap structural checks (column names, dtypes, value ranges). Does NOT
-    instantiate :class:`~vera.schema.Measurement` for every row — that
+    instantiate :class:`~vera.schema.Measurement` for every row -- that
     would be slow on large datasets.
+
+    Supports both legacy v1.0 CSVs (no ``sensor_mode`` or AS7265x columns)
+    and v1.1 CSVs with optional ``sensor_mode`` and ``as7_*`` columns.
     """
+    # Core columns that must always be present (the v1.0 set)
     missing = [c for c in ALL_COLUMNS if c not in df.columns]
     if missing:
         raise SchemaError(f"missing required columns: {missing[:8]}...")
 
-    extra = [c for c in df.columns if c not in ALL_COLUMNS]
+    # Build the set of allowed columns for this frame
+    allowed = set(ALL_COLUMNS)
+    allowed.add("sensor_mode")
+    allowed.update(AS7265X_COLS)
+
+    extra = [c for c in df.columns if c not in allowed]
     if extra:
         raise SchemaError(f"unexpected columns present: {extra[:8]}...")
 
     if len(df) == 0:
         return
+
+    # Validate sensor_mode values if column is present
+    if "sensor_mode" in df.columns:
+        bad_mode = set(df["sensor_mode"].unique()) - set(SENSOR_MODES)
+        if bad_mode:
+            raise SchemaError(f"invalid sensor_mode values: {sorted(bad_mode)}")
 
     bad_class = set(df["mineral_class"].unique()) - set(MINERAL_CLASSES)
     if bad_class:
@@ -78,6 +118,17 @@ def validate_dataframe(df: pd.DataFrame) -> None:
     if not np.all(np.isfinite(lif_vals)):
         raise SchemaError(f"{LIF_COL} contains NaN/Inf")
 
+    # AS7265x columns: validate if present
+    if AS7265X_COLS[0] in df.columns:
+        as7_present = [c for c in AS7265X_COLS if c in df.columns]
+        if len(as7_present) != N_AS7265X:
+            raise SchemaError(
+                f"partial AS7265x columns: found {len(as7_present)} of {N_AS7265X}"
+            )
+        as7_block = df[list(AS7265X_COLS)].to_numpy(dtype=np.float64, copy=False)
+        if not np.all(np.isfinite(as7_block)):
+            raise SchemaError("as7_* columns contain NaN/Inf")
+
 
 # ---------------------------------------------------------------------------
 # Reading
@@ -87,8 +138,9 @@ def validate_dataframe(df: pd.DataFrame) -> None:
 def read_measurements_csv(path: str | Path) -> pd.DataFrame:
     """Read a VERA CSV from disk and validate it.
 
-    Returns a DataFrame whose columns are exactly :data:`ALL_COLUMNS`, in
-    canonical order, with numeric blocks dtyped as ``float64``/``int64``.
+    Returns a DataFrame with canonical column ordering and correct dtypes.
+    The returned frame always contains the v1.0 ``ALL_COLUMNS``. If the CSV
+    also contains ``sensor_mode`` and/or AS7265x columns they are preserved.
     """
     path = Path(path)
     if not path.exists():
@@ -97,7 +149,20 @@ def read_measurements_csv(path: str | Path) -> pd.DataFrame:
     df = pd.read_csv(path)
     validate_dataframe(df)
 
-    df = df[list(ALL_COLUMNS)].copy()
+    # Build ordered column list preserving optional columns
+    keep: list[str] = list(ALL_COLUMNS)
+    if "sensor_mode" in df.columns:
+        # Insert sensor_mode right after the metadata block
+        keep = list(ALL_COLUMNS[:len(ALL_COLUMNS)])
+        keep.insert(len(ALL_COLUMNS) - len(SPEC_COLS) - len(LED_COLS) - 1, "sensor_mode")
+    if AS7265X_COLS[0] in df.columns:
+        # Insert AS7265x columns after spec columns, before LED columns
+        spec_end = keep.index(SPEC_COLS[-1]) + 1
+        for i, c in enumerate(AS7265X_COLS):
+            keep.insert(spec_end + i, c)
+
+    df = df[keep].copy()
+
     df["integration_time_ms"] = df["integration_time_ms"].astype(np.int64)
     df["ilmenite_fraction"] = df["ilmenite_fraction"].astype(np.float64)
     df["ambient_temp_c"] = df["ambient_temp_c"].astype(np.float64)
@@ -106,6 +171,9 @@ def read_measurements_csv(path: str | Path) -> pd.DataFrame:
     for c in LED_COLS:
         df[c] = df[c].astype(np.float64)
     df[LIF_COL] = df[LIF_COL].astype(np.float64)
+    if AS7265X_COLS[0] in df.columns:
+        for c in AS7265X_COLS:
+            df[c] = df[c].astype(np.float64)
     return df
 
 
@@ -122,16 +190,42 @@ def write_measurements_csv(
 
     Accepts either an iterable of :class:`Measurement` instances or an
     already-built DataFrame. In both cases the output is validated before
-    being written.
+    being written. AS7265x and sensor_mode columns are preserved when
+    present.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
     if isinstance(measurements, pd.DataFrame):
-        df = measurements[list(ALL_COLUMNS)].copy()
+        df = measurements.copy()
     else:
         rows = [m.to_row() for m in measurements]
-        df = pd.DataFrame(rows, columns=list(ALL_COLUMNS))
+        if rows:
+            df = pd.DataFrame(rows)
+        else:
+            df = pd.DataFrame(columns=list(ALL_COLUMNS))
+
+    # Keep only allowed columns in a canonical order
+    ordered: list[str] = []
+    for c in ALL_COLUMNS:
+        if c in df.columns:
+            ordered.append(c)
+    # sensor_mode goes right after metadata
+    if "sensor_mode" in df.columns and "sensor_mode" not in ordered:
+        ordered.insert(len(ordered), "sensor_mode")
+    # Insert sensor_mode after packing_density if present
+    if "sensor_mode" in df.columns:
+        if "sensor_mode" in ordered:
+            ordered.remove("sensor_mode")
+        pd_idx = ordered.index("packing_density") + 1
+        ordered.insert(pd_idx, "sensor_mode")
+    # AS7265x columns after spec block
+    if AS7265X_COLS[0] in df.columns:
+        spec_end = ordered.index(SPEC_COLS[-1]) + 1
+        for i, c in enumerate(AS7265X_COLS):
+            if c not in ordered:
+                ordered.insert(spec_end + i, c)
+    df = df[ordered]
 
     validate_dataframe(df)
     df.to_csv(path, index=False)
@@ -162,17 +256,49 @@ def extract_lif(df: pd.DataFrame) -> np.ndarray:
     return np.ascontiguousarray(df[LIF_COL].to_numpy(dtype=np.float64, copy=True))
 
 
-def extract_feature_matrix(df: pd.DataFrame) -> np.ndarray:
-    """Return the (N, 301) concat of [spec | led | lif].
+def extract_as7265x(df: pd.DataFrame) -> np.ndarray:
+    """Return the (N, 18) AS7265x multispectral block.
 
-    This is the canonical raw feature matrix consumed by training/inference.
-    Preprocessing is applied on top of this; the column ordering matches
-    ``[*SPEC_COLS, *LED_COLS, LIF_COL]``.
+    Raises ``KeyError`` if the AS7265x columns are not present.
     """
-    spec = extract_spectra(df)
+    return np.ascontiguousarray(
+        df[list(AS7265X_COLS)].to_numpy(dtype=np.float64, copy=True)
+    )
+
+
+def extract_feature_matrix(df: pd.DataFrame, sensor_mode: str | None = None) -> np.ndarray:
+    """Return the raw feature matrix for the given sensor mode.
+
+    When *sensor_mode* is ``None`` the mode is auto-detected from the
+    DataFrame columns (backward compatible: defaults to ``"full"`` for
+    legacy data).
+
+    =================  ====================================================
+    Mode               Shape
+    =================  ====================================================
+    ``"full"``         ``(N, 301)`` -- ``[spec | led | lif]``
+    ``"multispectral"````(N, 31)``  -- ``[as7 | led | lif]``
+    ``"combined"``     ``(N, 319)`` -- ``[spec | as7 | led | lif]``
+    =================  ====================================================
+    """
+    if sensor_mode is None:
+        sensor_mode = _detect_sensor_mode(df)
+
     led = extract_leds(df)
     lif = extract_lif(df).reshape(-1, 1)
-    return np.concatenate([spec, led, lif], axis=1)
+
+    if sensor_mode == "full":
+        spec = extract_spectra(df)
+        return np.concatenate([spec, led, lif], axis=1)
+    elif sensor_mode == "multispectral":
+        as7 = extract_as7265x(df)
+        return np.concatenate([as7, led, lif], axis=1)
+    elif sensor_mode == "combined":
+        spec = extract_spectra(df)
+        as7 = extract_as7265x(df)
+        return np.concatenate([spec, as7, led, lif], axis=1)
+    else:
+        raise ValueError(f"Unknown sensor_mode: {sensor_mode!r}")
 
 
 def extract_labels(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
@@ -192,6 +318,7 @@ __all__ = [
     "extract_spectra",
     "extract_leds",
     "extract_lif",
+    "extract_as7265x",
     "extract_feature_matrix",
     "extract_labels",
 ]
