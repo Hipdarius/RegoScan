@@ -13,6 +13,7 @@
 
 #include <Arduino.h>
 #include "Config.h"
+#include "AS7265x.h"
 #include "C12880MA.h"
 #include "Illumination.h"
 #include "Protocol.h"
@@ -24,6 +25,7 @@ enum class State : uint8_t {
     IDLE,
     DARK_FRAME,
     BROADBAND,
+    MULTISPECTRAL,
     NARROWBAND,
     LIF,
     TRANSMIT,
@@ -36,12 +38,15 @@ static uint8_t        g_led_idx        = 0;  // which LED in NARROWBAND sweep
 // ── Hardware drivers ────────────────────────────────────────────
 static C12880MA       g_spec;
 static Illumination   g_light;
+static AS7265x        g_as7265x;
 
 // ── Scan data (static allocation — no heap) ─────────────────────
 static uint16_t       g_dark_raw[N_SPEC_PIXELS];
 static uint16_t       g_broad_raw[N_SPEC_PIXELS];
 static uint16_t       g_narrow_raw[N_LEDS][N_SPEC_PIXELS];
 static uint16_t       g_lif_raw = 0;
+static float          g_as7265x_data[N_AS7265X_BANDS];
+static bool           g_as7265x_present = false;
 static ScanFrame      g_frame;
 
 // ── Averaging accumulators ──────────────────────────────────────
@@ -126,6 +131,7 @@ void setup() {
 
     g_spec.init();
     g_light.init();
+    g_as7265x.init();
 
     Serial.println("{\"event\":\"boot\",\"v\":" + String(WIRE_PROTOCOL_VERSION) + "}");
 }
@@ -184,8 +190,24 @@ void loop() {
             g_light.allOff();
             g_led_idx = 0;
             g_avg_idx = 0;
-            enterState(State::NARROWBAND);
+            enterState(State::MULTISPECTRAL);
         }
+        break;
+    }
+
+    // ── MULTISPECTRAL: read AS7265x 18-band sensor if present ───
+    case State::MULTISPECTRAL: {
+        if (g_as7265x.isConnected()) {
+            g_as7265x.readAllBands(g_as7265x_data);
+            g_as7265x_present = true;
+        } else {
+            // Sensor absent — zero the buffer and flag it
+            for (uint8_t i = 0; i < N_AS7265X_BANDS; i++) {
+                g_as7265x_data[i] = 0.0f;
+            }
+            g_as7265x_present = false;
+        }
+        enterState(State::NARROWBAND);
         break;
     }
 
@@ -272,6 +294,14 @@ void loop() {
 
         // LIF: normalize against dark baseline on the photodiode
         g_frame.lif_450lp = static_cast<float>(g_lif_raw) / 4095.0f;
+
+        // AS7265x multispectral data
+        g_frame.has_as7265x = g_as7265x_present;
+        if (g_as7265x_present) {
+            for (uint8_t k = 0; k < N_AS7265X_BANDS; k++) {
+                g_frame.as7265x[k] = g_as7265x_data[k];
+            }
+        }
 
         transmitFrame(g_frame, Serial);
         enterState(State::IDLE);

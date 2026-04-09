@@ -29,9 +29,11 @@ namespace vera {
 struct ScanFrame {
     uint16_t integration_time_ms;
     float    ambient_temp_c;
-    float    spec[N_SPEC_PIXELS];   // reflectance-normalised spectra
-    float    led[N_LEDS];           // per-LED reflectance
-    float    lif_450lp;             // fluorescence channel
+    float    spec[N_SPEC_PIXELS];       // reflectance-normalised spectra
+    float    led[N_LEDS];               // per-LED reflectance
+    float    lif_450lp;                 // fluorescence channel
+    float    as7265x[N_AS7265X_BANDS];  // AS7265x 18-band multispectral
+    bool     has_as7265x;               // true if sensor was present
 };
 
 /// Serialize a ScanFrame to JSON on Serial.

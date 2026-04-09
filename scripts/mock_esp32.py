@@ -70,7 +70,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from vera.inference import resolve_endmembers
-from vera.schema import MINERAL_CLASSES, N_LED, N_SPEC
+from vera.schema import AS7265X_BANDS, MINERAL_CLASSES, N_AS7265X, N_LED, N_SPEC, WAVELENGTHS
 from vera.synth import (
     NoiseConfig,
     fractions_for_class,
@@ -94,6 +94,33 @@ logger = logging.getLogger("mock_esp32")
 # ---------------------------------------------------------------------------
 
 
+def _synth_as7265x(
+    spec: list[float],
+    rng: np.random.Generator,
+) -> list[float]:
+    """Synthesize fake AS7265x 18-band readings from a C12880MA spectrum.
+
+    Samples the continuous spectrum at the 18 AS7265x band wavelengths
+    using nearest-neighbor interpolation and adds a small amount of
+    Gaussian noise to simulate the discrete sensor's lower resolution.
+    """
+    spec_arr = np.asarray(spec, dtype=np.float64)
+    wl_arr = np.asarray(WAVELENGTHS, dtype=np.float64)
+    as7_values = []
+    for band_nm in AS7265X_BANDS:
+        # Find nearest C12880MA pixel to this AS7265x band wavelength
+        idx = int(np.argmin(np.abs(wl_arr - band_nm)))
+        # Average a small window around the nearest pixel (+/- 2 pixels)
+        lo = max(0, idx - 2)
+        hi = min(len(spec_arr), idx + 3)
+        val = float(np.mean(spec_arr[lo:hi]))
+        # Add sensor noise (AS7265x is noisier than C12880MA)
+        val += float(rng.normal(0.0, 0.005))
+        val = max(0.0, val)
+        as7_values.append(round(val, 6))
+    return as7_values
+
+
 def build_sensor_frame(
     mineral_class: str,
     rng: np.random.Generator,
@@ -101,6 +128,7 @@ def build_sensor_frame(
     *,
     emit_truth: bool = True,
     noise: NoiseConfig | None = None,
+    sensor_mode: str = "combined",
 ) -> dict:
     """Synthesise one sensor reading and format it as a wire-protocol dict.
 
@@ -117,6 +145,10 @@ def build_sensor_frame(
         ilmenite fraction. Set False to mimic real hardware output.
     noise
         Optional noise configuration override.
+    sensor_mode
+        Which sensor channels to include: "full" (spec only),
+        "combined" (spec + as7265x), or "multispectral" (as7265x only,
+        but spec is still emitted for reference).
     """
     fracs = fractions_for_class(mineral_class, rng)
     measurement = synth_measurement(
@@ -137,6 +169,10 @@ def build_sensor_frame(
         "lif_450lp": round(measurement.lif_450lp, 6),
     }
 
+    # Include AS7265x data when sensor_mode requests it
+    if sensor_mode in ("combined", "multispectral"):
+        frame["as7"] = _synth_as7265x(measurement.spec, rng)
+
     if emit_truth:
         frame["_truth"] = {
             "mineral_class": measurement.mineral_class,
@@ -153,6 +189,7 @@ def emit_frames(
     mineral_class: str | None,
     seed: int,
     emit_truth: bool,
+    sensor_mode: str = "combined",
 ) -> None:
     """Main generation loop — writes newline-delimited JSON to stdout.
 
@@ -170,6 +207,9 @@ def emit_frames(
         RNG seed for reproducibility across test runs.
     emit_truth
         Forward to :func:`build_sensor_frame`.
+    sensor_mode
+        Which sensor channels to simulate: "full", "combined", or
+        "multispectral". Forwarded to :func:`build_sensor_frame`.
     """
     rng = np.random.default_rng(seed)
 
@@ -185,6 +225,7 @@ def emit_frames(
             klass = mineral_class or classes[frame_idx % len(classes)]
             frame = build_sensor_frame(
                 klass, rng, em, emit_truth=emit_truth,
+                sensor_mode=sensor_mode,
             )
 
             line = json.dumps(frame, separators=(",", ":"))
@@ -253,6 +294,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="omit _truth labels (simulate real hardware)",
     )
     parser.add_argument(
+        "--sensor-mode",
+        choices=["full", "combined", "multispectral"],
+        default="combined",
+        help=(
+            "which sensor channels to simulate: "
+            '"full" = C12880MA only, '
+            '"combined" = C12880MA + AS7265x (default), '
+            '"multispectral" = AS7265x only'
+        ),
+    )
+    parser.add_argument(
         "--verbose", "-v",
         action="store_true",
         help="enable DEBUG logging to stderr",
@@ -270,11 +322,12 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     logger.info(
-        "Starting mock ESP32 — interval=%.1fs, count=%s, class=%s, seed=%d",
+        "Starting mock ESP32 — interval=%.1fs, count=%s, class=%s, seed=%d, sensor_mode=%s",
         args.interval,
         args.count or "inf",
         args.mineral_class or "round-robin",
         args.seed,
+        args.sensor_mode,
     )
 
     emit_frames(
@@ -283,6 +336,7 @@ def main(argv: list[str] | None = None) -> int:
         mineral_class=args.mineral_class,
         seed=args.seed,
         emit_truth=not args.no_truth,
+        sensor_mode=args.sensor_mode,
     )
     return 0
 

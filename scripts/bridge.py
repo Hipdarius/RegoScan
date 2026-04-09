@@ -79,11 +79,13 @@ from vera.schema import (
     LIF_COL,
     MINERAL_CLASSES,
     Measurement,
+    N_AS7265X,
     N_FEATURES_TOTAL,
     N_LED,
     N_SPEC,
     PACKING_DENSITIES,
     SPEC_COLS,
+    get_feature_count,
 )
 
 # ---------------------------------------------------------------------------
@@ -114,6 +116,10 @@ class SensorFrame(BaseModel):
     Contains only fields the hardware can physically measure. Everything
     else (sample_id, mineral_class, ilmenite_fraction) is filled in by
     the bridge after inference.
+
+    The ``as7`` field is optional -- real hardware may or may not have
+    the AS7265x triad sensor installed.  Frames without this field
+    remain fully backward-compatible.
     """
 
     v: int = Field(ge=1, le=1, description="Wire protocol version")
@@ -122,6 +128,7 @@ class SensorFrame(BaseModel):
     spec: list[float] = Field(min_length=N_SPEC, max_length=N_SPEC)
     led: list[float] = Field(min_length=N_LED, max_length=N_LED)
     lif_450lp: float
+    as7: list[float] | None = None
 
 
 class GroundTruth(BaseModel):
@@ -167,15 +174,24 @@ def validate_frame(raw_json: str) -> tuple[SensorFrame, GroundTruth | None]:
 
 
 def build_feature_vector(frame: SensorFrame) -> np.ndarray:
-    """Concatenate sensor channels into the canonical (301,) feature vector.
+    """Concatenate sensor channels into a feature vector.
 
-    Column order matches ``[*SPEC_COLS, *LED_COLS, LIF_COL]`` as
-    defined in :mod:`vera.schema`.
+    When AS7265x data is present, the vector is ``(319,)``
+    (spec + as7265x + led + lif = 288 + 18 + 12 + 1 = "combined" mode).
+    Without it, the vector is ``(301,)`` (spec + led + lif = "full" mode).
+
+    Column order matches the sensor_mode conventions in :mod:`vera.schema`.
     """
-    spec = np.asarray(frame.spec, dtype=np.float32)
-    led = np.asarray(frame.led, dtype=np.float32)
-    lif = np.float32(frame.lif_450lp)
-    return np.concatenate([spec, led, [lif]])
+    parts: list[np.ndarray] = [
+        np.asarray(frame.spec, dtype=np.float32),
+    ]
+    if frame.as7 is not None:
+        parts.append(np.asarray(frame.as7, dtype=np.float32))
+    parts.extend([
+        np.asarray(frame.led, dtype=np.float32),
+        np.asarray([frame.lif_450lp], dtype=np.float32),
+    ])
+    return np.concatenate(parts)
 
 
 def frame_to_measurement(
@@ -192,6 +208,7 @@ def frame_to_measurement(
     schema row.  The mineral_class and ilmenite_fraction fields are
     filled from the ONNX model prediction, NOT from ground truth.
     """
+    sensor_mode = "combined" if frame.as7 is not None else "full"
     return Measurement(
         sample_id=sample_id,
         measurement_id=str(uuid.uuid4()),
@@ -201,9 +218,11 @@ def frame_to_measurement(
         integration_time_ms=frame.integration_time_ms,
         ambient_temp_c=frame.ambient_temp_c,
         packing_density=packing_density,  # type: ignore[arg-type]
+        sensor_mode=sensor_mode,  # type: ignore[arg-type]
         spec=frame.spec,
         led=frame.led,
         lif_450lp=frame.lif_450lp,
+        as7265x=frame.as7,
     )
 
 

@@ -85,9 +85,11 @@ constexpr float THERM_C = 2.019202e-7f;
 constexpr uint32_t THERM_SERIES_OHM = 10000;
 
 // ── JSON serialization budget ───────────────────────────────────
-// 288 spec floats × ~8 chars + 12 led × ~8 chars + overhead ≈ 3 KB.
-// Round up to 4 KB to stay within a single Serial.write() call.
-constexpr size_t JSON_BUFFER_BYTES = 4096;
+// 288 spec floats × ~8 chars + 18 as7265x floats × ~8 chars +
+// 12 led × ~8 chars + overhead ≈ 3.2 KB.
+// 4480 bytes accommodates the optional AS7265x array (~150 extra
+// bytes) while staying within a single Serial.write() call.
+constexpr size_t JSON_BUFFER_BYTES = 4480;
 
 // ── Measurement averaging ──────────────────────────────────────
 // Number of readings to accumulate and average per measurement

@@ -48,13 +48,18 @@ from vera.inference import (  # noqa: E402
     synth_demo_features,
 )
 from vera.schema import (  # noqa: E402
+    AS7265X_BANDS,
     LED_WAVELENGTHS_NM,
     MINERAL_CLASSES,
+    N_AS7265X,
     N_FEATURES_TOTAL,
     N_LED,
     N_SPEC,
     SCHEMA_VERSION,
+    SENSOR_MODES,
+    SensorMode,
     WAVELENGTHS,
+    get_feature_count,
 )
 
 
@@ -128,12 +133,14 @@ class SpectrumRequest(BaseModel):
 
     ``spec`` is 288 floats on the C12880MA grid (340–850 nm). ``led`` is
     12 narrow-band reflectance values. ``lif_450lp`` is the 450 nm
-    longpass fluorescence channel under 405 nm excitation.
+    longpass fluorescence channel under 405 nm excitation.  ``as7265x``
+    is an optional 18-float array from the AS7265x triad sensor.
     """
 
     spec: list[float] = Field(min_length=N_SPEC, max_length=N_SPEC)
     led: list[float] = Field(min_length=N_LED, max_length=N_LED)
     lif_450lp: float
+    as7265x: list[float] | None = None
 
 
 class ClassProbability(BaseModel):
@@ -154,6 +161,7 @@ class DemoResponse(PredictionResponse):
     spec: list[float]
     led: list[float]
     lif_450lp: float
+    as7265x: list[float] | None = None
     true_class: str
     true_ilmenite_fraction: float
 
@@ -167,6 +175,8 @@ class MetaResponse(BaseModel):
     model_loaded: bool
     model_sha256: str | None
     model_run_dir: str | None
+    sensor_mode: str
+    as7265x_bands_nm: list[int] | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -237,31 +247,60 @@ def healthz() -> dict[str, Any]:
 
 @app.get("/api/meta", response_model=MetaResponse)
 def meta() -> MetaResponse:
+    # Determine the sensor mode from the loaded engine's metadata,
+    # defaulting to "full" if no model is loaded.
+    sensor_mode = "full"
+    as7265x_bands: list[int] | None = None
+
+    # If a model is loaded and exposes a sensor_mode attribute, use it
+    if _ENGINE is not None and hasattr(_ENGINE, "sensor_mode"):
+        sensor_mode = _ENGINE.sensor_mode  # type: ignore[attr-defined]
+
+    # Include AS7265x band wavelengths when the mode uses the triad sensor
+    if sensor_mode in ("multispectral", "combined"):
+        as7265x_bands = list(AS7265X_BANDS)
+
     return MetaResponse(
         schema_version=SCHEMA_VERSION,
         class_names=list(MINERAL_CLASSES),
         wavelengths_nm=[float(w) for w in WAVELENGTHS],
         led_wavelengths_nm=list(LED_WAVELENGTHS_NM),
-        n_features_total=N_FEATURES_TOTAL,
+        n_features_total=get_feature_count(sensor_mode),
         model_loaded=_ENGINE is not None,
         model_sha256=_model_sha256(),
         model_run_dir=str(_RUN_DIR) if _RUN_DIR is not None else None,
+        sensor_mode=sensor_mode,
+        as7265x_bands_nm=as7265x_bands,
     )
 
 
 @app.post("/api/predict", response_model=PredictionResponse)
 def predict(req: SpectrumRequest) -> dict[str, Any]:
-    features = np.concatenate(
-        [
-            np.asarray(req.spec, dtype=np.float32),
-            np.asarray(req.led, dtype=np.float32),
-            np.asarray([req.lif_450lp], dtype=np.float32),
-        ]
-    )
-    if features.shape != (N_FEATURES_TOTAL,):
+    # Build the feature vector based on which channels are present.
+    # The order must match the training schema: [spec, as7265x, led, lif].
+    parts: list[np.ndarray] = [
+        np.asarray(req.spec, dtype=np.float32),
+    ]
+    if req.as7265x is not None:
+        if len(req.as7265x) != N_AS7265X:
+            raise HTTPException(
+                status_code=400,
+                detail=f"as7265x must have exactly {N_AS7265X} values, got {len(req.as7265x)}",
+            )
+        parts.append(np.asarray(req.as7265x, dtype=np.float32))
+    parts.extend([
+        np.asarray(req.led, dtype=np.float32),
+        np.asarray([req.lif_450lp], dtype=np.float32),
+    ])
+    features = np.concatenate(parts)
+
+    # Determine expected feature count based on what was provided
+    expected_mode = "combined" if req.as7265x is not None else "full"
+    expected_count = get_feature_count(expected_mode)
+    if features.shape[0] != expected_count:
         raise HTTPException(
             status_code=400,
-            detail=f"expected {N_FEATURES_TOTAL} features, got {features.shape[0]}",
+            detail=f"expected {expected_count} features (mode={expected_mode}), got {features.shape[0]}",
         )
     return _to_prediction(features)
 
@@ -274,16 +313,18 @@ def predict_demo(seed: int | None = None) -> dict[str, Any]:
     demo full-stack behaviour without requiring a real CSV upload.
     """
     demo = synth_demo_features(seed=seed)
-    return _to_prediction(
-        demo["features"],
-        extras={
-            "spec": demo["spec"].tolist(),
-            "led": demo["led"].tolist(),
-            "lif_450lp": float(demo["lif_450lp"]),
-            "true_class": demo["true_class"],
-            "true_ilmenite_fraction": float(demo["true_ilmenite_fraction"]),
-        },
-    )
+    extras: dict[str, Any] = {
+        "spec": demo["spec"].tolist(),
+        "led": demo["led"].tolist(),
+        "lif_450lp": float(demo["lif_450lp"]),
+        "true_class": demo["true_class"],
+        "true_ilmenite_fraction": float(demo["true_ilmenite_fraction"]),
+    }
+    # Include AS7265x data when available from the demo synthesizer
+    if "as7265x" in demo and demo["as7265x"] is not None:
+        extras["as7265x"] = demo["as7265x"].tolist()
+
+    return _to_prediction(demo["features"], extras=extras)
 
 
 @app.get("/api/endmembers")

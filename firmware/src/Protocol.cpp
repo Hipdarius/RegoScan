@@ -34,6 +34,14 @@ size_t transmitFrame(const ScanFrame& frame, Print& stream) {
     // LIF fluorescence channel
     doc["lif_450lp"] = frame.lif_450lp;
 
+    // AS7265x 18-band multispectral (only when sensor is present)
+    if (frame.has_as7265x) {
+        JsonArray as7 = doc.createNestedArray("as7");
+        for (uint8_t k = 0; k < N_AS7265X_BANDS; k++) {
+            as7.add(frame.as7265x[k]);
+        }
+    }
+
     // Serialize as a single line
     size_t bytes = serializeJson(doc, stream);
     if (bytes == 0) {
