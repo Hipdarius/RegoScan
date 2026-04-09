@@ -30,10 +30,12 @@ if str(SRC) not in sys.path:
 
 from vera.schema import (
     MINERAL_CLASSES,
+    N_AS7265X,
     N_FEATURES_TOTAL,
     N_LED,
     N_SPEC,
     WAVELENGTHS,
+    get_feature_count,
 )
 
 # ---------------------------------------------------------------------------
@@ -103,6 +105,8 @@ class InferenceEngine:
     """
 
     def __init__(self, onnx_path: Path | str) -> None:
+        import json as _json
+
         try:
             import onnxruntime as ort
         except ImportError as exc:
@@ -114,6 +118,15 @@ class InferenceEngine:
         self._path = Path(onnx_path)
         if not self._path.exists():
             raise FileNotFoundError(f"ONNX model not found: {self._path}")
+
+        # Read sensor_mode from meta.json if it exists (backward compat: default "full")
+        meta_path = self._path.parent / "meta.json"
+        if meta_path.exists():
+            meta = _json.loads(meta_path.read_text())
+            self._sensor_mode: str = meta.get("sensor_mode", "full")
+        else:
+            self._sensor_mode = "full"
+        self._n_features: int = get_feature_count(self._sensor_mode)
 
         self._session = ort.InferenceSession(
             str(self._path),
@@ -132,14 +145,28 @@ class InferenceEngine:
     def sha256_short(self) -> str:
         return self._sha256
 
+    @property
+    def sensor_mode(self) -> str:
+        """Sensor configuration this model was trained with."""
+        return self._sensor_mode
+
+    @property
+    def expected_features(self) -> int:
+        """Number of input features this model expects."""
+        return self._n_features
+
     def predict(self, features: np.ndarray) -> dict[str, Any]:
-        """Run inference on a single (301,) feature vector.
+        """Run inference on a single feature vector.
 
         Parameters
         ----------
         features : np.ndarray
-            Shape ``(N_FEATURES_TOTAL,)`` — concatenation of
-            ``[spec_288 | led_12 | lif_1]``.
+            Shape ``(expected_features,)``.  The exact size depends on
+            the ``sensor_mode`` stored in ``meta.json``:
+
+            * ``"full"``          — 301 features (spec_288 + led_12 + lif_1)
+            * ``"multispectral"`` —  31 features (as7265x_18 + led_12 + lif_1)
+            * ``"combined"``      — 319 features (spec_288 + as7265x_18 + led_12 + lif_1)
 
         Returns
         -------
@@ -147,7 +174,13 @@ class InferenceEngine:
             ``class_index`` (int), ``probabilities`` (ndarray of shape
             ``(5,)``), ``ilmenite_fraction`` (float clamped to [0, 1]).
         """
-        x = features.astype(np.float32).reshape(1, 1, N_FEATURES_TOTAL)
+        n = self._n_features
+        if features.size != n:
+            raise ValueError(
+                f"Feature vector has {features.size} elements, but this "
+                f"model (sensor_mode={self._sensor_mode!r}) expects {n}"
+            )
+        x = features.astype(np.float32).reshape(1, 1, n)
         logits, ilmenite = self._session.run(None, {self._input_name: x})
 
         probs = _softmax(logits[0])
@@ -169,11 +202,23 @@ class InferenceEngine:
 # ---------------------------------------------------------------------------
 
 
-def synth_demo_features(seed: int | None = None) -> dict[str, Any]:
+def synth_demo_features(
+    seed: int | None = None,
+    sensor_mode: str = "full",
+) -> dict[str, Any]:
     """Generate one synthetic measurement and return its feature vector.
 
     Used by the ``POST /api/predict/demo`` endpoint so the frontend can
     exercise the full inference pipeline without uploading a CSV.
+
+    Parameters
+    ----------
+    seed : int | None
+        RNG seed for reproducibility.
+    sensor_mode : str
+        ``"full"``          — 301 features (spec + led + lif).
+        ``"multispectral"`` —  31 features (as7265x + led + lif).
+        ``"combined"``      — 319 features (spec + as7265x + led + lif).
     """
     from vera.synth import (
         Endmembers,
@@ -199,16 +244,36 @@ def synth_demo_features(seed: int | None = None) -> dict[str, Any]:
     spec = np.asarray(m.spec, dtype=np.float32)
     led = np.asarray(m.led, dtype=np.float32)
     lif = np.float32(m.lif_450lp)
-    features = np.concatenate([spec, led, [lif]])
 
-    return {
-        "features": features,
+    result: dict[str, Any] = {
         "spec": spec,
         "led": led,
         "lif_450lp": lif,
         "true_class": klass,
         "true_ilmenite_fraction": m.ilmenite_fraction,
     }
+
+    if sensor_mode == "full":
+        features = np.concatenate([spec, led, [lif]])
+    elif sensor_mode in ("multispectral", "combined"):
+        # Generate synthetic AS7265x 18-channel data by subsampling the
+        # spectrum at representative wavelengths.  The AS7265x covers
+        # 410–940 nm with 18 discrete channels; we approximate by picking
+        # evenly spaced indices from the C12880MA spectrum and adding a
+        # small amount of noise to simulate the different sensor.
+        indices = np.linspace(0, N_SPEC - 1, N_AS7265X, dtype=int)
+        as7265x = spec[indices] + rng.normal(0, 0.005, size=N_AS7265X).astype(np.float32)
+        result["as7265x"] = as7265x
+
+        if sensor_mode == "multispectral":
+            features = np.concatenate([as7265x, led, [lif]])
+        else:  # combined
+            features = np.concatenate([spec, as7265x, led, [lif]])
+    else:
+        raise ValueError(f"Unknown sensor_mode: {sensor_mode!r}")
+
+    result["features"] = features
+    return result
 
 
 def load_endmembers_payload() -> dict[str, Any]:

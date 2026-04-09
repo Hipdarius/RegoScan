@@ -40,6 +40,7 @@ from vera.schema import (
     MINERAL_CLASSES,
     N_CLASSES,
     N_FEATURES_TOTAL,
+    get_feature_count,
 )
 
 
@@ -86,9 +87,14 @@ def run_plsr(args: argparse.Namespace) -> int:
     bundles = split_bundle(df, split)
     print(f"Split: train={len(bundles['train'].class_idx)}, val={len(bundles['val'].class_idx)}, test={len(bundles['test'].class_idx)}")
 
+    sensor_mode: str = args.sensor_mode
+
     # Hyperparams for PLSR: 8 components seems to be the sweet spot for VIS/NIR.
     # More than 12 starts to overfit the synthetic noise.
-    bundle = fit_baseline(bundles["train"], n_components=8, n_estimators=200, seed=args.seed)
+    bundle = fit_baseline(
+        bundles["train"], n_components=8, n_estimators=200,
+        seed=args.seed, sensor_mode=sensor_mode,
+    )
     save_baseline(bundle, out / "model.pkl")
 
     metrics: dict[str, dict[str, float]] = {}
@@ -97,7 +103,7 @@ def run_plsr(args: argparse.Namespace) -> int:
         if len(b.class_idx) == 0:
             metrics[name] = {"top1_acc": float("nan"), "ilm_rmse": float("nan"), "ilm_r2": float("nan")}
             continue
-        X = build_baseline_features(b)
+        X = build_baseline_features(b, sensor_mode=sensor_mode)
         pred_cls, pred_ilm = bundle.predict(X)
         metrics[name] = quick_metrics(pred_cls, pred_ilm, b.class_idx, b.ilmenite)
 
@@ -105,6 +111,7 @@ def run_plsr(args: argparse.Namespace) -> int:
         "model": "plsr",
         "data": str(Path(args.data).resolve()),
         "seed": args.seed,
+        "sensor_mode": sensor_mode,
         "metrics": metrics,
         "n_components": 8,
         "n_estimators": 200,
@@ -130,10 +137,13 @@ def run_cnn(args: argparse.Namespace) -> int:
     out.mkdir(parents=True, exist_ok=True)
 
     set_global_seed(args.seed)
-    assert_input_size()
+
+    sensor_mode: str = args.sensor_mode
+    n_features = get_feature_count(sensor_mode)
+    assert_input_size(n_features)
 
     df = read_measurements_csv(args.data)
-    print(f"Loaded {len(df)} measurements")
+    print(f"Loaded {len(df)} measurements  [sensor_mode={sensor_mode}, n_features={n_features}]")
 
     split = sample_level_split(df, val_frac=args.val_frac, test_frac=args.test_frac, seed=args.seed)
     bundles = split_bundle(df, split)
@@ -147,7 +157,7 @@ def run_cnn(args: argparse.Namespace) -> int:
     val_loader = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False)
     test_loader = DataLoader(test_ds, batch_size=args.batch_size, shuffle=False)
 
-    model = RegoscanCNN(seed=args.seed)
+    model = RegoscanCNN(n_features=n_features, seed=args.seed)
     print(f"CNN parameters: {count_params(model):,}")
     
     # AdamW + Cosine Annealing is a solid combo for this type of spectral data.
@@ -216,15 +226,17 @@ def run_cnn(args: argparse.Namespace) -> int:
     manifest = {
         "model": "cnn",
         "epochs_completed": epoch,
+        "sensor_mode": sensor_mode,
         "metrics": final_metrics,
         "history": history,
-        "input_shape": [1, N_FEATURES_TOTAL],
+        "input_shape": [1, n_features],
     }
     (out / "run.json").write_text(json.dumps(manifest, indent=2))
     (out / "meta.json").write_text(json.dumps({
         "n_classes": N_CLASSES,
         "class_names": list(MINERAL_CLASSES),
-        "input_shape": [1, N_FEATURES_TOTAL],
+        "input_shape": [1, n_features],
+        "sensor_mode": sensor_mode,
     }, indent=2))
     (out / "split.json").write_text(json.dumps({
         "train_samples": list(split.train_samples),
@@ -291,6 +303,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--model", choices=["plsr", "cnn"], required=True)
     p.add_argument("--data", required=True, help="path to a VERA CSV")
     p.add_argument("--out", required=True, help="output run directory")
+    p.add_argument(
+        "--sensor-mode",
+        choices=["full", "multispectral", "combined"],
+        default="full",
+        help="sensor configuration: full (C12880MA 301 features), "
+             "multispectral (AS7265x 31 features), "
+             "combined (both, 319 features)",
+    )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--val-frac", type=float, default=0.15)
     p.add_argument("--test-frac", type=float, default=0.15)

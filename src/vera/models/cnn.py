@@ -2,9 +2,14 @@
 
 Architecture overview
 ---------------------
-Input: (B, 1, 301)  — concatenated [spectrum(288) | LED(12) | LIF(1)]
+Input: (B, 1, n_features) — default 301 for C12880MA full sensor mode
+  Possible inputs by sensor mode:
+    full:          301 features (spectrum(288) + LED(12) + LIF(1))
+    multispectral:  31 features (AS7265x(18) + LED(12) + LIF(1))
+    combined:      319 features (spectrum(288) + AS7265x(18) + LED(12) + LIF(1))
 
-  Stem       : conv(1→32, k=9)          + BN + ReLU + MaxPool(2)
+  Stem       : conv(1→32, k=9|3)        + BN + ReLU + MaxPool(2)
+               k=3 used when n_features < 64 to prevent spatial collapse
   Stage 1    : 2 × BasicBlock1D(32→32)
   Stage 2    : 2 × BasicBlock1D(32→64,   stride=2)
   Stage 3    : 2 × BasicBlock1D(64→128,  stride=2)
@@ -67,14 +72,15 @@ class BasicBlock1D(nn.Module):
 class RegoscanCNN(nn.Module):
     """1D ResNet with two heads.
 
-    Forward signature (unchanged from the previous tiny CNN):
-        x: (B, 1, 301) -> (logits (B, 5), ilm (B,))
+    Forward signature:
+        x: (B, 1, n_features) -> (logits (B, n_classes), ilm (B,))
     """
 
     def __init__(
         self,
         n_classes: int = N_CLASSES,
         *,
+        n_features: int = N_FEATURES_TOTAL,
         channels: tuple[int, int, int, int] = (32, 64, 128, 192),
         blocks_per_stage: int = 2,
         dropout: float = 0.25,
@@ -82,10 +88,20 @@ class RegoscanCNN(nn.Module):
     ) -> None:
         super().__init__()
         _set_torch_seed(seed)
+        self.n_features = n_features
 
         c1, c2, c3, c4 = channels
+
+        # For small inputs (e.g. 31-feature multispectral), use a smaller
+        # kernel to prevent the spatial dimension from collapsing too fast.
+        if n_features < 64:
+            stem_kernel, stem_padding = 3, 1
+        else:
+            stem_kernel, stem_padding = 9, 4
+
         self.stem = nn.Sequential(
-            nn.Conv1d(1, c1, kernel_size=9, stride=1, padding=4, bias=False),
+            nn.Conv1d(1, c1, kernel_size=stem_kernel, stride=1,
+                      padding=stem_padding, bias=False),
             nn.BatchNorm1d(c1),
             nn.ReLU(inplace=True),
             nn.MaxPool1d(kernel_size=2),
@@ -136,11 +152,22 @@ def count_params(model: nn.Module) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
-def assert_input_size():
-    """Sanity-check the architecture against the canonical feature vector."""
-    assert N_FEATURES_TOTAL == 301, (
-        f"CNN architecture assumes 301-feature input, got {N_FEATURES_TOTAL}"
-    )
+def assert_input_size(n_features: int | None = None):
+    """Sanity-check that the feature count is a known valid value.
+
+    When *n_features* is ``None`` the legacy check (N_FEATURES_TOTAL == 301)
+    is performed for backward compatibility.  When an explicit count is
+    passed, we only verify it is positive — the CNN adapts its stem
+    automatically.
+    """
+    if n_features is None:
+        assert N_FEATURES_TOTAL == 301, (
+            f"CNN architecture assumes 301-feature input, got {N_FEATURES_TOTAL}"
+        )
+    else:
+        assert n_features > 0, (
+            f"n_features must be positive, got {n_features}"
+        )
 
 
 __all__ = ["RegoscanCNN", "BasicBlock1D", "count_params", "assert_input_size"]

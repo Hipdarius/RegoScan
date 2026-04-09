@@ -170,3 +170,44 @@ def test_cnn_training_is_deterministic_at_fixed_seed(synth_csv: Path, tmp_path: 
     assert set(sa.keys()) == set(sb.keys())
     for k in sa:
         assert torch.allclose(sa[k], sb[k]), f"weight {k} not reproducible"
+
+
+# ---------------------------------------------------------------------------
+# AS7265x dual-sensor support (v1.1)
+# ---------------------------------------------------------------------------
+
+from vera.schema import get_feature_count
+
+
+def test_cnn_forward_multispectral_31_features():
+    """CNN with n_features=31 (multispectral) produces correct output shapes."""
+    n_feat = get_feature_count("multispectral")  # 31
+    model = RegoscanCNN(n_features=n_feat)
+    x = torch.zeros(2, 1, n_feat)
+    logits, ilm = model(x)
+    assert logits.shape == (2, 5)
+    assert ilm.shape == (2,)
+    assert (ilm >= 0).all() and (ilm <= 1).all()
+
+
+def test_cnn_forward_combined_319_features():
+    """CNN with n_features=319 (combined) produces correct output shapes."""
+    n_feat = get_feature_count("combined")  # 319
+    model = RegoscanCNN(n_features=n_feat)
+    x = torch.zeros(2, 1, n_feat)
+    logits, ilm = model(x)
+    assert logits.shape == (2, 5)
+    assert ilm.shape == (2,)
+    assert (ilm >= 0).all() and (ilm <= 1).all()
+
+
+def test_cnn_multispectral_uses_smaller_kernel():
+    """When n_features < 64, the stem should use kernel_size=3 instead of 9
+    to prevent the spatial dimension from collapsing too fast."""
+    n_feat = get_feature_count("multispectral")  # 31
+    model = RegoscanCNN(n_features=n_feat)
+    # The stem's first layer is a Conv1d
+    first_conv = model.stem[0]
+    assert first_conv.kernel_size == (3,), (
+        f"expected kernel_size=(3,) for small input, got {first_conv.kernel_size}"
+    )
