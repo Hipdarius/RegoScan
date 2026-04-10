@@ -78,56 +78,100 @@ def _apply_bands(
 
 
 def parametric_olivine(lam: np.ndarray) -> np.ndarray:
-    """Olivine: broad Fe2+ band centred ~1050 nm; we see its rising edge.
+    """Olivine (forsterite-fayalite series): Fe2+ in M1/M2 octahedral sites.
 
-    Continuum is reddish (rises with wavelength). UV drop below ~400 nm.
+    Three overlapping crystal-field bands near 850-1050 nm produce the
+    characteristic asymmetric absorption that begins within our 340-850 nm
+    window. Olivine is uniquely identifiable by: (1) a reflectance peak
+    near 600 nm, (2) a concave downturn starting ~700 nm from the 1-um
+    band onset, and (3) a distinct 450 nm Fe2+-Fe3+ charge transfer edge.
+
+    Refs: Burns 1993 (crystal field theory), Adams 1974 (band assignments)
     """
     continuum = 0.18 + 0.55 * (lam - 340.0) / (850.0 - 340.0)
     bands = [
-        (320.0, 60.0, 0.90),   # UV drop
-        (1050.0, 220.0, 0.55), # main Fe2+ band — only its rising edge in 340–850
-        (650.0, 70.0, 0.08),   # subtle Fe shoulder
+        (320.0, 50.0, 0.92),    # UV-edge: O->Fe charge transfer cutoff
+        (440.0, 30.0, 0.12),    # Fe2+-Fe3+ intervalence charge transfer
+        (600.0, 40.0, 0.05),    # weak spin-forbidden Fe2+ transition
+        (850.0, 120.0, 0.30),   # onset of the composite 1-um band (M1 site)
+        (1050.0, 200.0, 0.55),  # main 1-um band center (mostly outside window)
+        (650.0, 25.0, 0.06),    # narrow Fe2+ shoulder (diagnostic for Fo/Fa ratio)
+        (750.0, 50.0, 0.10),    # rising edge inflection — olivine fingerprint
     ]
     return _apply_bands(lam, continuum, bands)
 
 
 def parametric_pyroxene(lam: np.ndarray) -> np.ndarray:
-    """Pyroxene: ~900 and ~1900 nm Fe2+ bands; we see edge of the 900 nm band.
+    """Pyroxene (augite/pigeonite): Fe2+ in M1 and M2 octahedral sites.
 
-    Slightly darker continuum than olivine, sharper red edge.
+    Two major absorption complexes at ~900 nm (Band I) and ~1900 nm
+    (Band II). Within 340-850 nm we see: (1) Band I onset as a steep
+    downturn starting ~700 nm, (2) a diagnostic 505 nm absorption from
+    Fe2+ spin-forbidden transitions, and (3) a sharper UV edge than
+    olivine due to higher Fe3+ content in pyroxene.
+
+    Key discriminator vs olivine: pyroxene's 700-850 nm downturn is
+    steeper (narrower Band I), and the 505 nm feature is stronger.
+
+    Refs: Cloutis & Gaffey 1991, Adams 1974, Burns 1993
     """
     continuum = 0.12 + 0.50 * (lam - 340.0) / (850.0 - 340.0)
     bands = [
-        (320.0, 55.0, 0.95),
-        (920.0, 150.0, 0.65),  # main Fe2+ band centre just above our window
-        (505.0, 55.0, 0.10),
+        (320.0, 45.0, 0.95),    # UV-edge: sharper than olivine
+        (505.0, 35.0, 0.14),    # Fe2+ spin-forbidden (diagnostic)
+        (550.0, 25.0, 0.06),    # weak d-d transition
+        (670.0, 30.0, 0.08),    # Fe2+ M2 site shoulder
+        (760.0, 60.0, 0.18),    # Band I onset — steeper than olivine
+        (920.0, 130.0, 0.65),   # Band I center (above window)
+        (430.0, 35.0, 0.10),    # Fe3+ charge transfer
     ]
     return _apply_bands(lam, continuum, bands)
 
 
 def parametric_anorthite(lam: np.ndarray) -> np.ndarray:
-    """Anorthite (Ca-plagioclase): high, fairly featureless reflectance.
+    """Anorthite (Ca-plagioclase): high albedo, weak Fe2+ features.
 
-    Slight UV drop and a very weak ~650 nm Fe2+ feature when impure.
+    Plagioclase is the brightest common lunar mineral. Its spectrum is
+    dominated by a strong UV cutoff and a characteristic ~1250 nm band
+    (outside our window). Within 340-850 nm, the diagnostic features
+    are: (1) very high overall albedo (0.55-0.85), (2) a gentle slope
+    inflection near 600 nm, and (3) weak narrow features from trace
+    Fe2+ substituting for Ca2+ in the M-site.
+
+    Refs: Adams & Goullaud 1978, Pieters 1986
     """
     continuum = 0.55 + 0.30 * (lam - 340.0) / (850.0 - 340.0)
     bands = [
-        (300.0, 50.0, 0.60),
-        (660.0, 90.0, 0.04),
+        (300.0, 45.0, 0.60),    # UV cutoff (Al-O charge transfer)
+        (380.0, 25.0, 0.08),    # weak Fe3+ in tetrahedral site
+        (530.0, 40.0, 0.03),    # very weak Fe2+ spin-forbidden
+        (660.0, 50.0, 0.05),    # trace Fe2+ in Ca-site
+        (800.0, 80.0, 0.04),    # onset of 1250 nm band (barely visible)
     ]
     return _apply_bands(lam, continuum, bands)
 
 
 def parametric_ilmenite(lam: np.ndarray) -> np.ndarray:
-    """Ilmenite (FeTiO3): very dark, nearly flat, weak red brightening.
+    """Ilmenite (FeTiO3): opaque oxide, very dark, spectrally diagnostic.
 
-    Reflectance ~0.05–0.13 across the visible. The dominant signature is
-    *darkness*, which is exactly why it shows up cleanly in linear mixtures.
+    Ilmenite's low reflectance (0.04-0.12) is caused by intense Fe-Ti
+    charge transfer absorption across the entire VIS/NIR range. Within
+    340-850 nm, the key features are: (1) extremely low albedo, (2) a
+    broad shallow minimum near 560 nm from Ti3+-Ti4+ IVCT, (3) a weak
+    upturn near 700 nm, and (4) a flat-to-slightly-rising NIR profile.
+
+    The flatness of the NIR region is the key discriminator vs glass
+    (which has a steep NIR rise from npFe0 transparency).
+
+    Refs: Burns & Burns 1981, Hapke et al. 1975
     """
-    continuum = 0.05 + 0.06 * (lam - 340.0) / (850.0 - 340.0)
+    continuum = 0.04 + 0.07 * (lam - 340.0) / (850.0 - 340.0)
     bands = [
-        (300.0, 60.0, 0.30),
-        (560.0, 200.0, 0.10),  # very shallow broad absorption
+        (300.0, 50.0, 0.35),    # UV edge
+        (420.0, 40.0, 0.12),    # Fe2+-Ti4+ IVCT
+        (560.0, 80.0, 0.15),    # Ti3+-Ti4+ IVCT (diagnostic)
+        (700.0, 40.0, -0.04),   # weak reflectance upturn (negative = bump)
+        (480.0, 30.0, 0.08),    # Fe3+ crystal field
     ]
     return _apply_bands(lam, continuum, bands)
 
