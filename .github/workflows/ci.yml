@@ -39,4 +39,4 @@ jobs:
           path: ~/.platformio
           key: pio-${{ hashFiles('firmware/platformio.ini') }}
       - run: pip install platformio
-      - run: cd firmware && pio run --environment esp32s3
+      - run: cd firmware && pio run

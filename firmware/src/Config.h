@@ -10,6 +10,7 @@
 // Re-map when the custom PCB is laid out.
 // ─────────────────────────────────────────────────────────────────
 
+#include <cstddef>
 #include <cstdint>
 
 namespace vera {

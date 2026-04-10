@@ -62,3 +62,14 @@ dev = [
     "ruff>=0.4",
     "httpx>=0.27",
 ]
+
+# Pull CPU-only PyTorch to avoid shipping the 2 GB CUDA bundle.
+# Local machines with a GPU can override via:
+#   uv sync --no-sources
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]

@@ -13,20 +13,20 @@
 namespace vera {
 
 size_t transmitFrame(const ScanFrame& frame, Print& stream) {
-    StaticJsonDocument<JSON_BUFFER_BYTES> doc;
+    JsonDocument doc;
 
     doc["v"]                   = WIRE_PROTOCOL_VERSION;
     doc["integration_time_ms"] = frame.integration_time_ms;
     doc["ambient_temp_c"]      = frame.ambient_temp_c;
 
     // Spectral array — 288 floats
-    JsonArray spec = doc.createNestedArray("spec");
+    JsonArray spec = doc["spec"].to<JsonArray>();
     for (uint16_t i = 0; i < N_SPEC_PIXELS; i++) {
         spec.add(frame.spec[i]);
     }
 
     // Per-LED reflectance — 12 floats
-    JsonArray led = doc.createNestedArray("led");
+    JsonArray led = doc["led"].to<JsonArray>();
     for (uint8_t j = 0; j < N_LEDS; j++) {
         led.add(frame.led[j]);
     }
@@ -36,7 +36,7 @@ size_t transmitFrame(const ScanFrame& frame, Print& stream) {
 
     // AS7265x 18-band multispectral (only when sensor is present)
     if (frame.has_as7265x) {
-        JsonArray as7 = doc.createNestedArray("as7");
+        JsonArray as7 = doc["as7"].to<JsonArray>();
         for (uint8_t k = 0; k < N_AS7265X_BANDS; k++) {
             as7.add(frame.as7265x[k]);
         }

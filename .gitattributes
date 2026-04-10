@@ -1,0 +1,31 @@
+# Normalize line endings across platforms
+* text=auto
+
+# Force LF for source files
+*.py text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.h text eol=lf
+*.cpp text eol=lf
+
+# Binary files
+*.onnx binary
+*.tflite binary
+*.npz binary
+*.png binary
+*.jpg binary
+*.svg binary
+*.ico binary
+*.woff2 binary
+*.pkl binary
+
+# Lock files — track but don't diff (noisy)
+uv.lock linguist-generated
+package-lock.json linguist-generated
