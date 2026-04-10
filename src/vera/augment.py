@@ -91,12 +91,12 @@ def wavelength_shift(
 class AugmentConfig:
     """Knobs for the default training-time augmentation pipeline."""
 
-    p_apply: float = 0.7           # probability the whole pipeline runs
-    gaussian_sigma: float = 0.005
-    intensity_sigma: float = 0.04
-    baseline_amp: float = 0.015
-    dropout_p: float = 0.005
-    max_shift_px: int = 1
+    p_apply: float = 0.8           # probability the whole pipeline runs
+    gaussian_sigma: float = 0.010  # 2x: force robustness to readout noise
+    intensity_sigma: float = 0.08  # 2x: simulate LED intensity variations
+    baseline_amp: float = 0.030    # 2x: ambient light / stray light leaks
+    dropout_p: float = 0.008       # dead pixel rate
+    max_shift_px: int = 2          # wavelength calibration uncertainty
     clip_lo: float = 0.0
     clip_hi: float = 1.5
 

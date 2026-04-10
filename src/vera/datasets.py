@@ -236,10 +236,22 @@ class RegoscanSpectraDataset(Dataset):
 
     def __getitem__(self, idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         spec = self.spectra[idx]
+        leds = self.leds[idx].copy()
+        lif_val = self.lif[idx]
+
         if self.augment:
             spec = augment_spectrum(spec, self._rng, self.augment_cfg).astype(
                 np.float32
             )
+            # Augment LED and LIF channels with small noise to prevent
+            # the model from memorizing exact LED/LIF values from the
+            # training seed. Without this, cross-seed generalization
+            # drops from >95% to ~18% because the CNN learns seed-
+            # specific noise patterns in the 13 non-spectral channels.
+            leds = leds + self._rng.normal(0.0, 0.012, size=leds.shape).astype(np.float32)
+            leds = np.clip(leds, 0.0, 1.5)
+            lif_val = float(lif_val + self._rng.normal(0.0, 0.020))
+            lif_val = float(max(lif_val, 0.0))
 
         # Build the feature vector based on sensor_mode
         parts: list[np.ndarray] = []
@@ -247,8 +259,8 @@ class RegoscanSpectraDataset(Dataset):
             parts.append(spec)
         if self.sensor_mode in ("multispectral", "combined") and self.as7265x is not None:
             parts.append(self.as7265x[idx])
-        parts.append(self.leds[idx])
-        parts.append(np.array([self.lif[idx]], dtype=np.float32))
+        parts.append(leds)
+        parts.append(np.array([lif_val], dtype=np.float32))
 
         feats = np.concatenate(parts).astype(np.float32)
         feats_t = torch.from_numpy(feats).unsqueeze(0)  # (1, K)

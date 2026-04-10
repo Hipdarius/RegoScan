@@ -202,12 +202,14 @@ def run_cnn(args: argparse.Namespace) -> int:
         optim, T_max=max(1, args.epochs), eta_min=args.lr * 0.02
     )
 
-    # Focal loss with label smoothing replaces vanilla CrossEntropy.
-    # gamma=2.0 down-weights easy classes (anorthositic, ilmenite) so
-    # gradient signal concentrates on hard boundary cases (mixed).
-    # label_smoothing=0.05 prevents overconfident logits that snap
-    # ambiguous mixed spectra to the nearest dominant class.
-    cls_loss_fn = FocalLoss(gamma=2.0, label_smoothing=0.05)
+    # CrossEntropy with light label smoothing. Focal loss experiments
+    # (gamma=1.0-2.0) achieved high same-seed accuracy but failed to
+    # generalize across seeds — the modulating factor suppressed
+    # gradient on "easy" classes so severely that the model learned
+    # seed-specific noise patterns rather than true spectral features.
+    # Label smoothing alone (0.05) prevents overconfident logits on
+    # boundary cases without distorting the loss landscape.
+    cls_loss_fn = torch.nn.CrossEntropyLoss(label_smoothing=0.05)
     reg_loss_fn = torch.nn.SmoothL1Loss()
 
     history: list[dict[str, float]] = []
