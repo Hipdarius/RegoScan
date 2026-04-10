@@ -124,9 +124,25 @@ def fractions_for_class(klass: str, rng: np.random.Generator) -> np.ndarray:
         f[ENDMEMBER_INDEX["olivine"]] = rng.uniform(0.02, 0.10)
         f[ENDMEMBER_INDEX["ilmenite"]] = rng.uniform(0.00, 0.08)
     elif klass == "mixed":
-        # Dirichlet prior gives a natural spread for unclassified soils
-        f = rng.dirichlet(alpha=np.array([1.0, 1.0, 1.0, 0.6, 0.8]))
-        f[ENDMEMBER_INDEX["ilmenite"]] = min(f[ENDMEMBER_INDEX["ilmenite"]], 0.20)
+        # Dirichlet prior gives a natural spread for unclassified soils.
+        # The symmetric alpha (2.0) concentrates mass toward the center
+        # of the simplex, producing more evenly-distributed compositions.
+        # We cap the maximum single-endmember fraction at 0.35 so mixed
+        # samples never overlap with dominant-class boundaries (which
+        # start at 0.40+). Without this cap, ~36% of mixed samples had
+        # a dominant fraction >0.5 and were indistinguishable from the
+        # corresponding dominant class, causing 40% misclassification.
+        for _attempt in range(50):
+            f = rng.dirichlet(alpha=np.array([2.0, 2.0, 2.0, 1.2, 1.5]))
+            f[ENDMEMBER_INDEX["ilmenite"]] = min(f[ENDMEMBER_INDEX["ilmenite"]], 0.20)
+            f /= f.sum()
+            if f.max() <= 0.35:
+                break
+        else:
+            # Fallback: force near-uniform if Dirichlet keeps generating
+            # dominant samples (astronomically unlikely with alpha=2.0)
+            f = np.array([0.22, 0.22, 0.22, 0.14, 0.20])
+            f /= f.sum()
     else:
         raise ValueError(f"Unknown class: {klass}")
 
