@@ -57,7 +57,7 @@ def test_meta_includes_class_names_and_wavelengths(client):
     resp = client.get("/api/meta")
     assert resp.status_code == 200
     body = resp.json()
-    assert len(body["class_names"]) == 5
+    assert len(body["class_names"]) == 6
     assert len(body["wavelengths_nm"]) == 288
     assert len(body["led_wavelengths_nm"]) == 12
 

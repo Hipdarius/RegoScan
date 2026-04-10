@@ -71,6 +71,7 @@ def resolve_endmembers(cache_path: Path | None = None) -> Path:
         pyroxene=endmembers["pyroxene"],
         anorthite=endmembers["anorthite"],
         ilmenite=endmembers["ilmenite"],
+        glass_agglutinate=endmembers["glass_agglutinate"],
         source=np.asarray("parametric"),
     )
     return path
@@ -288,7 +289,8 @@ def load_endmembers_payload() -> dict[str, Any]:
         "wavelengths_nm": [float(w) for w in WAVELENGTHS],
         "endmembers": {
             name: [float(v) for v in data[name]]
-            for name in ("olivine", "pyroxene", "anorthite", "ilmenite")
+            for name in ("olivine", "pyroxene", "anorthite", "ilmenite", "glass_agglutinate")
+            if name in data.files
         },
         "source": str(data["source"]),
     }

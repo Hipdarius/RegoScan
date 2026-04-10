@@ -29,16 +29,21 @@ from vera.schema import (
     WAVELENGTHS,
 )
 
-ENDMEMBER_NAMES: tuple[str, ...] = ("olivine", "pyroxene", "anorthite", "ilmenite")
+ENDMEMBER_NAMES: tuple[str, ...] = (
+    "olivine", "pyroxene", "anorthite", "ilmenite", "glass_agglutinate",
+)
 ENDMEMBER_INDEX: dict[str, int] = {n: i for i, n in enumerate(ENDMEMBER_NAMES)}
 
-# Fluorescence efficiency @ 450nm. Anorthite is the star here. 
-# Ilmenite is basically a "black hole" for fluorescence.
+# Fluorescence efficiency @ 450nm under 405 nm excitation.
+# Anorthite is the strongest emitter; ilmenite is opaque.
+# Glass/agglutinate has weak residual fluorescence from trapped
+# plagioclase fragments — suppressed by npFe0 darkening.
 LIF_EFFICIENCY: dict[str, float] = {
-    "olivine":  0.30,
-    "pyroxene": 0.40,
-    "anorthite": 0.85,
-    "ilmenite": 0.00,
+    "olivine":           0.30,
+    "pyroxene":          0.40,
+    "anorthite":         0.85,
+    "ilmenite":          0.00,
+    "glass_agglutinate": 0.12,
 }
 
 LED_FWHM_NM: float = 25.0
@@ -48,7 +53,7 @@ LED_FWHM_NM: float = 25.0
 class Endmembers:
     """Ref spectra on the 288-px grid."""
     wavelengths_nm: np.ndarray
-    spectra: np.ndarray  # (4, 288)
+    spectra: np.ndarray  # (5, 288) — one row per endmember
     source: str
 
     @property
@@ -77,38 +82,54 @@ def load_endmembers(path: str | Path) -> Endmembers:
 
 
 def fractions_for_class(klass: str, rng: np.random.Generator) -> np.ndarray:
-    """Draws mineral mass fractions for a target class."""
-    f = np.zeros(4, dtype=np.float64)
-    
-    # TODO: These ranges are loosely based on lunar mare/highland ratios.
-    # Might need to tighten them after checking RELAB samples.
+    """Draws mineral mass fractions for a target class.
+
+    Returns a length-5 array indexed by ENDMEMBER_INDEX:
+    [olivine, pyroxene, anorthite, ilmenite, glass_agglutinate].
+    """
+    n = len(ENDMEMBER_NAMES)
+    f = np.zeros(n, dtype=np.float64)
+
     if klass == "olivine_rich":
         f[ENDMEMBER_INDEX["olivine"]] = rng.uniform(0.55, 0.85)
         f[ENDMEMBER_INDEX["pyroxene"]] = rng.uniform(0.05, 0.20)
         f[ENDMEMBER_INDEX["anorthite"]] = rng.uniform(0.05, 0.20)
         f[ENDMEMBER_INDEX["ilmenite"]] = rng.uniform(0.00, 0.05)
+        f[ENDMEMBER_INDEX["glass_agglutinate"]] = rng.uniform(0.00, 0.08)
     elif klass == "pyroxene_rich":
         f[ENDMEMBER_INDEX["pyroxene"]] = rng.uniform(0.55, 0.85)
         f[ENDMEMBER_INDEX["olivine"]] = rng.uniform(0.05, 0.20)
         f[ENDMEMBER_INDEX["anorthite"]] = rng.uniform(0.05, 0.20)
         f[ENDMEMBER_INDEX["ilmenite"]] = rng.uniform(0.00, 0.05)
+        f[ENDMEMBER_INDEX["glass_agglutinate"]] = rng.uniform(0.00, 0.08)
     elif klass == "anorthositic":
         f[ENDMEMBER_INDEX["anorthite"]] = rng.uniform(0.65, 0.92)
         f[ENDMEMBER_INDEX["olivine"]] = rng.uniform(0.02, 0.15)
         f[ENDMEMBER_INDEX["pyroxene"]] = rng.uniform(0.02, 0.15)
         f[ENDMEMBER_INDEX["ilmenite"]] = rng.uniform(0.00, 0.03)
+        f[ENDMEMBER_INDEX["glass_agglutinate"]] = rng.uniform(0.00, 0.05)
     elif klass == "ilmenite_rich":
         f[ENDMEMBER_INDEX["ilmenite"]] = rng.uniform(0.35, 0.65)
         f[ENDMEMBER_INDEX["pyroxene"]] = rng.uniform(0.10, 0.30)
         f[ENDMEMBER_INDEX["olivine"]] = rng.uniform(0.05, 0.20)
         f[ENDMEMBER_INDEX["anorthite"]] = rng.uniform(0.05, 0.25)
+        f[ENDMEMBER_INDEX["glass_agglutinate"]] = rng.uniform(0.00, 0.05)
+    elif klass == "glass_agglutinate":
+        # Mature regolith: 30–60% glass by volume (McKay et al. 1991).
+        # The remainder is comminuted crystalline debris — mostly
+        # plagioclase and pyroxene fragments trapped in the melt.
+        f[ENDMEMBER_INDEX["glass_agglutinate"]] = rng.uniform(0.40, 0.70)
+        f[ENDMEMBER_INDEX["anorthite"]] = rng.uniform(0.10, 0.25)
+        f[ENDMEMBER_INDEX["pyroxene"]] = rng.uniform(0.05, 0.20)
+        f[ENDMEMBER_INDEX["olivine"]] = rng.uniform(0.02, 0.10)
+        f[ENDMEMBER_INDEX["ilmenite"]] = rng.uniform(0.00, 0.08)
     elif klass == "mixed":
-        # Dirichlet gives us a more natural spread for "everything else"
-        f = rng.dirichlet(alpha=np.array([1.0, 1.0, 1.0, 0.6]))
+        # Dirichlet prior gives a natural spread for unclassified soils
+        f = rng.dirichlet(alpha=np.array([1.0, 1.0, 1.0, 0.6, 0.8]))
         f[ENDMEMBER_INDEX["ilmenite"]] = min(f[ENDMEMBER_INDEX["ilmenite"]], 0.20)
     else:
         raise ValueError(f"Unknown class: {klass}")
-    
+
     f = np.clip(f, 0.0, None)
     f /= f.sum()
     return f

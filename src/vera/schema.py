@@ -108,6 +108,7 @@ MINERAL_CLASSES: Final[tuple[str, ...]] = (
     "olivine_rich",
     "pyroxene_rich",
     "anorthositic",
+    "glass_agglutinate",
     "mixed",
 )
 N_CLASSES: Final[int] = len(MINERAL_CLASSES)
@@ -153,7 +154,8 @@ def columns_for_mode(sensor_mode: str = "full") -> tuple[str, ...]:
 
 PackingDensity = Literal["loose", "medium", "packed"]
 MineralClass = Literal[
-    "ilmenite_rich", "olivine_rich", "pyroxene_rich", "anorthositic", "mixed"
+    "ilmenite_rich", "olivine_rich", "pyroxene_rich", "anorthositic",
+    "glass_agglutinate", "mixed",
 ]
 
 

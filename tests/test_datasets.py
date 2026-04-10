@@ -38,7 +38,8 @@ def _toy_endmembers() -> Endmembers:
     pyroxene = 0.15 + 0.50 * x
     anorthite = 0.55 + 0.30 * x
     ilmenite = 0.05 + 0.05 * x
-    spectra = np.stack([olivine, pyroxene, anorthite, ilmenite], axis=0)
+    glass = 0.04 + 0.22 * x
+    spectra = np.stack([olivine, pyroxene, anorthite, ilmenite, glass], axis=0)
     return Endmembers(wavelengths_nm=lam, spectra=spectra, source="toy")
 
 

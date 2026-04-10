@@ -69,5 +69,6 @@ export const CLASS_LABELS: Record<string, string> = {
   olivine_rich: "Olivine-Rich",
   pyroxene_rich: "Pyroxene-Rich",
   anorthositic: "Anorthositic",
+  glass_agglutinate: "Glass/Agglutinate",
   mixed: "Mixed Regolith",
 };

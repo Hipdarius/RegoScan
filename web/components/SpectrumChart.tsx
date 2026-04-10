@@ -18,6 +18,7 @@ const ENDMEMBER_COLORS: Record<string, { dark: string; light: string }> = {
   pyroxene: { dark: "#fb923c", light: "#ea580c" },
   anorthite: { dark: "#60a5fa", light: "#2563eb" },
   ilmenite: { dark: "#8b5cf6", light: "#7c3aed" },
+  glass_agglutinate: { dark: "#f87171", light: "#dc2626" },
 };
 
 function getEndmemberColor(name: string, isLight: boolean): string {

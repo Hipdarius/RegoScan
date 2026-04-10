@@ -31,7 +31,8 @@ def _toy_endmembers() -> Endmembers:
     pyroxene = 0.15 + 0.50 * x
     anorthite = 0.55 + 0.30 * x
     ilmenite = 0.05 + 0.05 * x
-    spectra = np.stack([olivine, pyroxene, anorthite, ilmenite], axis=0)
+    glass = 0.04 + 0.22 * x
+    spectra = np.stack([olivine, pyroxene, anorthite, ilmenite, glass], axis=0)
     return Endmembers(wavelengths_nm=lam, spectra=spectra, source="toy")
 
 
@@ -60,7 +61,7 @@ def test_cnn_forward_shapes_and_param_count():
     assert 500_000 <= n <= 1_000_000, f"unexpected param count: {n}"
     x = torch.zeros(2, 1, N_FEATURES_TOTAL)
     logits, ilm = model(x)
-    assert logits.shape == (2, 5)
+    assert logits.shape == (2, 6)
     assert ilm.shape == (2,)
     # head_reg uses sigmoid → outputs in (0, 1)
     assert (ilm >= 0).all() and (ilm <= 1).all()
@@ -140,7 +141,7 @@ def test_cnn_smoke_one_epoch(synth_csv: Path, tmp_path: Path):
     model.eval()
     x = torch.zeros(1, 1, N_FEATURES_TOTAL)
     logits, ilm = model(x)
-    assert logits.shape == (1, 5)
+    assert logits.shape == (1, 6)
     assert ilm.shape == (1,)
 
 
@@ -185,7 +186,7 @@ def test_cnn_forward_multispectral_31_features():
     model = RegoscanCNN(n_features=n_feat)
     x = torch.zeros(2, 1, n_feat)
     logits, ilm = model(x)
-    assert logits.shape == (2, 5)
+    assert logits.shape == (2, 6)
     assert ilm.shape == (2,)
     assert (ilm >= 0).all() and (ilm <= 1).all()
 
@@ -196,7 +197,7 @@ def test_cnn_forward_combined_319_features():
     model = RegoscanCNN(n_features=n_feat)
     x = torch.zeros(2, 1, n_feat)
     logits, ilm = model(x)
-    assert logits.shape == (2, 5)
+    assert logits.shape == (2, 6)
     assert ilm.shape == (2,)
     assert (ilm >= 0).all() and (ilm <= 1).all()
 

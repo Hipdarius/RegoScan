@@ -66,8 +66,9 @@ def test_wavelength_grid_endpoints_and_monotonic():
 
 
 def test_class_label_space():
-    assert len(MINERAL_CLASSES) == 5
+    assert len(MINERAL_CLASSES) == 6
     assert "ilmenite_rich" in MINERAL_CLASSES
+    assert "glass_agglutinate" in MINERAL_CLASSES
     assert "mixed" in MINERAL_CLASSES
 
 

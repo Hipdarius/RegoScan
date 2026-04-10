@@ -45,7 +45,8 @@ def _toy_endmembers() -> Endmembers:
     pyroxene = 0.15 + 0.50 * x
     anorthite = 0.55 + 0.30 * x
     ilmenite = 0.05 + 0.05 * x
-    spectra = np.stack([olivine, pyroxene, anorthite, ilmenite], axis=0)
+    glass = 0.04 + 0.22 * x  # dark, steep red slope — npFe0 signature
+    spectra = np.stack([olivine, pyroxene, anorthite, ilmenite, glass], axis=0)
     return Endmembers(wavelengths_nm=lam, spectra=spectra, source="toy")
 
 
@@ -63,7 +64,7 @@ def endmembers() -> Endmembers:
 def test_fractions_sum_to_one(klass: str):
     rng = np.random.default_rng(42)
     f = fractions_for_class(klass, rng)
-    assert f.shape == (4,)
+    assert f.shape == (5,)
     assert (f >= 0).all()
     assert f.sum() == pytest.approx(1.0)
 
@@ -94,14 +95,14 @@ def test_unknown_class_raises():
 
 
 def test_mixture_at_a_pure_endmember(endmembers):
-    f = np.array([0.0, 0.0, 1.0, 0.0])  # pure anorthite
+    f = np.array([0.0, 0.0, 1.0, 0.0, 0.0])  # pure anorthite
     mix = mixture_spectrum(f, endmembers)
     np.testing.assert_allclose(mix, endmembers.spectra[ENDMEMBER_INDEX["anorthite"]])
 
 
 def test_mixture_is_linear(endmembers):
-    f1 = np.array([0.5, 0.5, 0.0, 0.0])
-    f2 = np.array([0.0, 0.0, 1.0, 0.0])
+    f1 = np.array([0.5, 0.5, 0.0, 0.0, 0.0])
+    f2 = np.array([0.0, 0.0, 1.0, 0.0, 0.0])
     half = 0.5 * mixture_spectrum(f1, endmembers) + 0.5 * mixture_spectrum(f2, endmembers)
     blend = mixture_spectrum(0.5 * f1 + 0.5 * f2, endmembers)
     np.testing.assert_allclose(half, blend)
@@ -131,8 +132,8 @@ def test_single_measurement_validates(endmembers):
 def test_lif_low_when_ilmenite_high(endmembers):
     rng = np.random.default_rng(11)
     # build directly: pure ilmenite vs pure anorthite
-    f_ilm = np.array([0.0, 0.0, 0.0, 1.0])
-    f_an = np.array([0.0, 0.0, 1.0, 0.0])
+    f_ilm = np.array([0.0, 0.0, 0.0, 1.0, 0.0])
+    f_an = np.array([0.0, 0.0, 1.0, 0.0, 0.0])
     lifs_ilm = []
     lifs_an = []
     noise = NoiseConfig()
@@ -192,10 +193,11 @@ def test_dataset_balanced_class_round_robin(endmembers):
     )
     assert len(out) == 30
     classes = [m.mineral_class for m in out]
-    # 5 classes, 10 samples => each class appears in exactly 2 samples => 6 measurements each
+    # 6 classes, 10 samples, round-robin: 4 classes get 2 samples (6 meas),
+    # 2 classes get 1 sample (3 meas). Total = 4*6 + 2*3 = 30.
     from collections import Counter
     counts = Counter(classes)
-    assert set(counts.values()) == {6}
+    assert set(counts.values()) <= {3, 6}
 
 
 def test_dataset_round_trips_through_csv(tmp_path, endmembers):

@@ -132,6 +132,29 @@ def parametric_ilmenite(lam: np.ndarray) -> np.ndarray:
     return _apply_bands(lam, continuum, bands)
 
 
+def parametric_glass_agglutinate(lam: np.ndarray) -> np.ndarray:
+    """Impact-melt glass + agglutinates: dark, red-sloped, featureless.
+
+    Space weathering produces nanophase iron (npFe0) in glass rims on
+    regolith grains. The optical effect is twofold: overall darkening
+    (lower albedo than any crystalline mineral except ilmenite) and
+    strong reddening (reflectance rises steeply toward NIR).
+
+    Unlike ilmenite, glass has moderate albedo in the NIR (>700 nm)
+    and no Ti charge-transfer absorption — this is the key spectral
+    discriminator between the two dark endmembers.
+
+    Refs: Hapke 2001, Noble et al. 2007 (npFe0 optical model)
+    """
+    # Steep red slope with low UV reflectance — hallmark of npFe0
+    continuum = 0.04 + 0.22 * (lam - 340.0) / (850.0 - 340.0)
+    bands = [
+        (320.0, 50.0, 0.85),   # deep UV cutoff from Fe charge transfer
+        (500.0, 150.0, 0.06),  # very subtle broad suppression in visible
+    ]
+    return _apply_bands(lam, continuum, bands)
+
+
 def build_parametric_endmembers() -> dict[str, np.ndarray]:
     lam = WAVELENGTHS.astype(np.float64)
     return {
@@ -140,6 +163,7 @@ def build_parametric_endmembers() -> dict[str, np.ndarray]:
         "pyroxene": parametric_pyroxene(lam),
         "anorthite": parametric_anorthite(lam),
         "ilmenite": parametric_ilmenite(lam),
+        "glass_agglutinate": parametric_glass_agglutinate(lam),
     }
 
 
@@ -204,7 +228,7 @@ def main(argv: list[str] | None = None) -> int:
         print("[warn] USGS fetch unavailable — using parametric endmembers")
 
     # sanity-check shapes
-    for name in ("olivine", "pyroxene", "anorthite", "ilmenite"):
+    for name in ("olivine", "pyroxene", "anorthite", "ilmenite", "glass_agglutinate"):
         arr = endmembers[name]
         assert arr.shape == (N_SPEC,), f"{name} has wrong shape {arr.shape}"
         assert np.all(np.isfinite(arr)), f"{name} contains NaN/Inf"
@@ -218,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
         pyroxene=endmembers["pyroxene"],
         anorthite=endmembers["anorthite"],
         ilmenite=endmembers["ilmenite"],
+        glass_agglutinate=endmembers["glass_agglutinate"],
         source=np.asarray(source),
     )
     print(f"[ok] wrote {out}")
