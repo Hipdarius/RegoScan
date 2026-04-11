@@ -50,9 +50,10 @@ STUB_MAGIC = b"VERA_TFLITE_STUB\x00"
 # ---------------------------------------------------------------------------
 
 
-def export_onnx(model: RegoscanCNN, out_path: Path, *, opset: int = 17) -> Path:
+def export_onnx(model: RegoscanCNN, out_path: Path, *, opset: int = 17, n_features: int | None = None) -> Path:
     model.eval()
-    dummy = torch.zeros(1, 1, N_FEATURES_TOTAL, dtype=torch.float32)
+    n = n_features or model.n_features
+    dummy = torch.zeros(1, 1, n, dtype=torch.float32)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     # Use the legacy (TorchScript-based) exporter so we don't pull in
     # onnxscript. It's still supported in torch 2.11 via dynamo=False.
@@ -164,12 +165,14 @@ def quantize_run(run_dir: Path, tflite_path: Path) -> dict:
             f"no meta.json in {run_dir} — only CNN runs can be quantised"
         )
 
-    model = RegoscanCNN()
+    meta = json.loads(meta_path.read_text())
+    n_features = meta["input_shape"][-1]
+    model = RegoscanCNN(n_features=n_features)
     model.load_state_dict(torch.load(run_dir / "model.pt"))
     model.eval()
 
     onnx_path = run_dir / "model.onnx"
-    export_onnx(model, onnx_path)
+    export_onnx(model, onnx_path, n_features=n_features)
     print(f"[ok] exported ONNX -> {onnx_path}  ({onnx_path.stat().st_size} bytes)")
 
     tflite_path.parent.mkdir(parents=True, exist_ok=True)

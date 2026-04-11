@@ -31,9 +31,11 @@ from vera.schema import (
     N_FEATURES_TOTAL,
     N_LED,
     N_SPEC,
+    N_SWIR,
     SPEC_COLS,
     SPEC_LAMBDA_MAX_NM,
     SPEC_LAMBDA_MIN_NM,
+    SWIR_COLS,
     WAVELENGTHS,
     Measurement,
 )
@@ -47,11 +49,11 @@ from vera.schema import (
 def test_constants_shape():
     assert N_SPEC == 288
     assert N_LED == 12
-    assert N_FEATURES_TOTAL == 288 + 12 + 1
+    assert N_FEATURES_TOTAL == 288 + 2 + 12 + 1  # spec + swir + led + lif = 303
     assert len(SPEC_COLS) == N_SPEC
     assert len(LED_COLS) == N_LED
-    # 8 metadata + 288 spec + 12 LED + 1 LIF
-    assert len(ALL_COLUMNS) == 8 + 288 + 12 + 1
+    # 8 metadata + 288 spec + 2 swir + 12 LED + 1 LIF = 311
+    assert len(ALL_COLUMNS) == 8 + 288 + 2 + 12 + 1
     assert len(set(ALL_COLUMNS)) == len(ALL_COLUMNS), "duplicate column names"
 
 
@@ -88,6 +90,7 @@ def _good_measurement(**overrides) -> Measurement:
         ambient_temp_c=21.5,
         packing_density="medium",
         spec=[0.5] * N_SPEC,
+        swir=[0.4, 0.35],
         led=[0.4] * N_LED,
         lif_450lp=0.3,
     )
@@ -98,7 +101,7 @@ def _good_measurement(**overrides) -> Measurement:
 def test_measurement_round_trip_to_row_and_back():
     m = _good_measurement()
     row = m.to_row()
-    # to_row() emits ALL_COLUMNS plus sensor_mode
+    # to_row() emits ALL_COLUMNS plus sensor_mode and SWIR columns
     expected_keys = set(ALL_COLUMNS) | {"sensor_mode"}
     assert set(row.keys()) == expected_keys
     m2 = Measurement.from_row(row)
@@ -162,11 +165,12 @@ def _good_df(n: int = 3) -> pd.DataFrame:
             sample_id=f"S{i:03d}",
             measurement_id=f"M{i:03d}",
             spec=list(rng.uniform(0.1, 0.9, size=N_SPEC).astype(float)),
+            swir=list(rng.uniform(0.1, 0.9, size=N_SWIR).astype(float)),
             led=list(rng.uniform(0.1, 0.9, size=N_LED).astype(float)),
             lif_450lp=float(rng.uniform(0.1, 0.9)),
         )
         rows.append(m.to_row())
-    # Use ALL_COLUMNS order but keep sensor_mode if present
+    # Use ALL_COLUMNS order
     cols = list(ALL_COLUMNS)
     return pd.DataFrame(rows)[cols]
 
@@ -259,10 +263,10 @@ def test_extract_blocks_have_expected_shapes():
     assert spec.shape == (6, N_SPEC)
     assert led.shape == (6, N_LED)
     assert lif.shape == (6,)
-    assert feats.shape == (6, N_FEATURES_TOTAL)
-    # feature matrix is the literal concatenation
+    assert feats.shape == (6, N_FEATURES_TOTAL)  # 303 = 288 + 2 + 12 + 1
+    # feature matrix is [spec | swir | led | lif]
     np.testing.assert_array_equal(feats[:, :N_SPEC], spec)
-    np.testing.assert_array_equal(feats[:, N_SPEC : N_SPEC + N_LED], led)
+    np.testing.assert_array_equal(feats[:, N_SPEC + N_SWIR : N_SPEC + N_SWIR + N_LED], led)
     np.testing.assert_array_equal(feats[:, -1], lif)
 
 
@@ -312,15 +316,15 @@ def test_as7265x_cols_format():
 
 
 def test_get_feature_count_full():
-    assert get_feature_count("full") == 301
+    assert get_feature_count("full") == 303  # 288 + 2 + 12 + 1
 
 
 def test_get_feature_count_multispectral():
-    assert get_feature_count("multispectral") == 31
+    assert get_feature_count("multispectral") == 33  # 18 + 2 + 12 + 1
 
 
 def test_get_feature_count_combined():
-    assert get_feature_count("combined") == 319
+    assert get_feature_count("combined") == 321  # 288 + 18 + 2 + 12 + 1
 
 
 def test_get_feature_count_invalid_mode():
@@ -328,8 +332,8 @@ def test_get_feature_count_invalid_mode():
         get_feature_count("bogus")
 
 
-def test_schema_version_is_1_1_0():
-    assert SCHEMA_VERSION == "1.1.0"
+def test_schema_version_is_1_2_0():
+    assert SCHEMA_VERSION == "1.2.0"
 
 
 def test_measurement_with_as7265x_none_validates():
@@ -357,27 +361,29 @@ def test_measurement_to_row_includes_sensor_mode():
 
 def test_columns_for_mode_full():
     cols = columns_for_mode("full")
-    # 8 meta + sensor_mode + 288 spec + 12 LED + 1 LIF = 310
-    assert len(cols) == 8 + 1 + N_SPEC + N_LED + 1
+    # 8 meta + sensor_mode + 288 spec + 2 swir + 12 LED + 1 LIF = 312
+    assert len(cols) == 8 + 1 + N_SPEC + N_SWIR + N_LED + 1
 
 
 def test_columns_for_mode_multispectral():
     cols = columns_for_mode("multispectral")
-    # 8 meta + sensor_mode + 18 AS7265x + 12 LED + 1 LIF = 40
-    assert len(cols) == 8 + 1 + N_AS7265X + N_LED + 1
+    # 8 meta + sensor_mode + 18 AS7265x + 2 swir + 12 LED + 1 LIF = 42
+    assert len(cols) == 8 + 1 + N_AS7265X + N_SWIR + N_LED + 1
 
 
 def test_columns_for_mode_combined():
     cols = columns_for_mode("combined")
-    # 8 meta + sensor_mode + 288 spec + 18 AS7265x + 12 LED + 1 LIF = 328
-    assert len(cols) == 8 + 1 + N_SPEC + N_AS7265X + N_LED + 1
+    # 8 meta + sensor_mode + 288 spec + 18 AS7265x + 2 swir + 12 LED + 1 LIF = 330
+    assert len(cols) == 8 + 1 + N_SPEC + N_AS7265X + N_SWIR + N_LED + 1
 
 
 def test_legacy_309_column_df_validates():
-    """Old v1.0 309-column DataFrames without sensor_mode or AS7265x
-    columns must still validate (backward compatibility)."""
+    """Old v1.0 309-column DataFrames without sensor_mode, AS7265x,
+    or SWIR columns must still validate (backward compatibility)."""
     df = _good_df(3)
-    # _good_df already strips sensor_mode; ensure no AS7265x cols exist
+    # Strip SWIR columns to simulate a v1.0 DataFrame
+    df = df.drop(columns=[c for c in SWIR_COLS if c in df.columns])
+    # Ensure no AS7265x cols exist
     for c in AS7265X_COLS:
         assert c not in df.columns
     assert "sensor_mode" not in df.columns

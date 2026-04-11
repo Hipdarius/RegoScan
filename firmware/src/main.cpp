@@ -13,6 +13,7 @@
 
 #include <Arduino.h>
 #include "Config.h"
+#include "ADS1115.h"
 #include "AS7265x.h"
 #include "C12880MA.h"
 #include "Illumination.h"
@@ -27,6 +28,7 @@ enum class State : uint8_t {
     BROADBAND,
     MULTISPECTRAL,
     NARROWBAND,
+    SWIR,
     LIF,
     TRANSMIT,
 };
@@ -39,6 +41,7 @@ static uint8_t        g_led_idx        = 0;  // which LED in NARROWBAND sweep
 static C12880MA       g_spec;
 static Illumination   g_light;
 static AS7265x        g_as7265x;
+static ADS1115        g_ads1115;
 
 // ── Scan data (static allocation — no heap) ─────────────────────
 static uint16_t       g_dark_raw[N_SPEC_PIXELS];
@@ -47,6 +50,8 @@ static uint16_t       g_narrow_raw[N_LEDS][N_SPEC_PIXELS];
 static uint16_t       g_lif_raw = 0;
 static float          g_as7265x_data[N_AS7265X_BANDS];
 static bool           g_as7265x_present = false;
+static float          g_swir_data[N_SWIR_CHANNELS];
+static bool           g_swir_present = false;
 static ScanFrame      g_frame;
 
 // ── Averaging accumulators ──────────────────────────────────────
@@ -132,6 +137,11 @@ void setup() {
     g_spec.init();
     g_light.init();
     g_as7265x.init();
+    g_ads1115.init();
+
+    // 1050 nm LED pin (SWIR channel 2)
+    pinMode(PIN_LED_1050, OUTPUT);
+    digitalWrite(PIN_LED_1050, LOW);
 
     Serial.println("{\"event\":\"boot\",\"v\":" + String(WIRE_PROTOCOL_VERSION) + "}");
 }
@@ -239,9 +249,29 @@ void loop() {
             if (g_led_idx < N_LEDS) {
                 enterState(State::NARROWBAND);
             } else {
-                enterState(State::LIF);
+                enterState(State::SWIR);
             }
         }
+        break;
+    }
+
+    // ── SWIR: InGaAs photodiode via ADS1115 ─────────────────────
+    // Reads reflectance at 940 nm (existing LED) and 1050 nm (new LED)
+    // through the InGaAs photodiode + transimpedance amplifier.
+    // The ADS1115 provides 16-bit precision vs the ESP32's noisy 12-bit.
+    case State::SWIR: {
+        // TODO: replace with real ADS1115 I2C reads once hardware is wired
+        // For now, flag as absent — the pipeline handles this gracefully.
+        g_swir_present = false;
+        for (uint8_t k = 0; k < N_SWIR_CHANNELS; k++) {
+            g_swir_data[k] = 0.0f;
+        }
+        // When ADS1115 is connected, the sequence would be:
+        //   1. All LEDs off → read photodiode (dark SWIR)
+        //   2. 940 nm LED on → read photodiode → swir[0]
+        //   3. 1050 nm LED on → read photodiode → swir[1]
+        //   4. Normalize: swir[k] = (raw - dark) / 65535.0
+        enterState(State::LIF);
         break;
     }
 
@@ -294,6 +324,14 @@ void loop() {
 
         // LIF: normalize against dark baseline on the photodiode
         g_frame.lif_450lp = static_cast<float>(g_lif_raw) / 4095.0f;
+
+        // SWIR InGaAs photodiode data
+        g_frame.has_swir = g_swir_present;
+        if (g_swir_present) {
+            for (uint8_t k = 0; k < N_SWIR_CHANNELS; k++) {
+                g_frame.swir[k] = g_swir_data[k];
+            }
+        }
 
         // AS7265x multispectral data
         g_frame.has_as7265x = g_as7265x_present;

@@ -34,6 +34,7 @@ from vera.schema import (
     N_FEATURES_TOTAL,
     N_LED,
     N_SPEC,
+    N_SWIR,
     WAVELENGTHS,
     get_feature_count,
 )
@@ -64,16 +65,17 @@ def resolve_endmembers(cache_path: Path | None = None) -> Path:
 
     endmembers = build_parametric_endmembers()
     path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez(
-        path,
-        wavelengths_nm=endmembers["wavelengths_nm"],
-        olivine=endmembers["olivine"],
-        pyroxene=endmembers["pyroxene"],
-        anorthite=endmembers["anorthite"],
-        ilmenite=endmembers["ilmenite"],
-        glass_agglutinate=endmembers["glass_agglutinate"],
-        source=np.asarray("parametric"),
-    )
+    save_kwargs = {
+        "wavelengths_nm": endmembers["wavelengths_nm"],
+        "source": np.asarray("parametric"),
+    }
+    for name in ("olivine", "pyroxene", "anorthite", "ilmenite", "glass_agglutinate"):
+        save_kwargs[name] = endmembers[name]
+        if f"{name}_swir" in endmembers:
+            save_kwargs[f"{name}_swir"] = endmembers[f"{name}_swir"]
+    if "swir_wavelengths_nm" in endmembers:
+        save_kwargs["swir_wavelengths_nm"] = endmembers["swir_wavelengths_nm"]
+    np.savez(path, **save_kwargs)
     return path
 
 
@@ -245,17 +247,19 @@ def synth_demo_features(
     spec = np.asarray(m.spec, dtype=np.float32)
     led = np.asarray(m.led, dtype=np.float32)
     lif = np.float32(m.lif_450lp)
+    swir = np.asarray(m.swir, dtype=np.float32) if m.swir is not None else np.zeros(N_SWIR, dtype=np.float32)
 
     result: dict[str, Any] = {
         "spec": spec,
         "led": led,
         "lif_450lp": lif,
+        "swir": swir,
         "true_class": klass,
         "true_ilmenite_fraction": m.ilmenite_fraction,
     }
 
     if sensor_mode == "full":
-        features = np.concatenate([spec, led, [lif]])
+        features = np.concatenate([spec, swir, led, [lif]])
     elif sensor_mode in ("multispectral", "combined"):
         # Generate synthetic AS7265x 18-channel data by subsampling the
         # spectrum at representative wavelengths.  The AS7265x covers
@@ -267,9 +271,9 @@ def synth_demo_features(
         result["as7265x"] = as7265x
 
         if sensor_mode == "multispectral":
-            features = np.concatenate([as7265x, led, [lif]])
+            features = np.concatenate([as7265x, swir, led, [lif]])
         else:  # combined
-            features = np.concatenate([spec, as7265x, led, [lif]])
+            features = np.concatenate([spec, as7265x, swir, led, [lif]])
     else:
         raise ValueError(f"Unknown sensor_mode: {sensor_mode!r}")
 

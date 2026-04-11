@@ -174,15 +174,24 @@ def run_cnn(args: argparse.Namespace) -> int:
 
     set_global_seed(args.seed)
 
-    sensor_mode: str = args.sensor_mode
+    df = read_measurements_csv(args.data)
+
+    # Auto-detect sensor mode from the data columns unless explicitly set.
+    # This prevents a mismatch where the CLI defaults to "full" but the
+    # CSV actually contains AS7265x columns (combined mode).
+    if args.sensor_mode != "full":
+        sensor_mode: str = args.sensor_mode
+    else:
+        from vera.io_csv import AS7265X_COLS
+        has_as7 = AS7265X_COLS[0] in df.columns
+        sensor_mode = "combined" if has_as7 else "full"
+
     n_features = get_feature_count(sensor_mode)
     assert_input_size(n_features)
-
-    df = read_measurements_csv(args.data)
     print(f"Loaded {len(df)} measurements  [sensor_mode={sensor_mode}, n_features={n_features}]")
 
     split = sample_level_split(df, val_frac=args.val_frac, test_frac=args.test_frac, seed=args.seed)
-    bundles = split_bundle(df, split)
+    bundles = split_bundle(df, split, sensor_mode=sensor_mode)
 
     # Use heavy data augmentation only for training.
     train_ds = RegoscanSpectraDataset(bundles["train"], augment=True, seed=args.seed)
@@ -350,9 +359,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--sensor-mode",
         choices=["full", "multispectral", "combined"],
         default="full",
-        help="sensor configuration: full (C12880MA 301 features), "
-             "multispectral (AS7265x 31 features), "
-             "combined (both, 319 features)",
+        help="sensor configuration: full (C12880MA 303 features), "
+             "multispectral (AS7265x 33 features), "
+             "combined (both, 321 features). "
+             "Auto-detected from data columns when set to 'full' (default).",
     )
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--val-frac", type=float, default=0.15)

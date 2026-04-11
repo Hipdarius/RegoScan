@@ -38,7 +38,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from vera.schema import N_SPEC, WAVELENGTHS  # noqa: E402
+from vera.schema import N_SPEC, N_SWIR, SWIR_WAVELENGTHS_NM, WAVELENGTHS  # noqa: E402
 
 DEFAULT_OUT = ROOT / "data" / "cache" / "usgs_endmembers.npz"
 
@@ -209,14 +209,28 @@ def parametric_glass_agglutinate(lam: np.ndarray) -> np.ndarray:
 
 def build_parametric_endmembers() -> dict[str, np.ndarray]:
     lam = WAVELENGTHS.astype(np.float64)
-    return {
+    swir_lam = np.array(SWIR_WAVELENGTHS_NM, dtype=np.float64)
+
+    # Evaluate each endmember at both the spectrometer grid AND the
+    # SWIR wavelengths. The parametric Gaussian-band models extrapolate
+    # naturally beyond 850 nm — the crystal-field absorption bands at
+    # 920–1050 nm are explicitly included in the band lists.
+    endmembers: dict[str, np.ndarray] = {
         "wavelengths_nm": lam,
-        "olivine": parametric_olivine(lam),
-        "pyroxene": parametric_pyroxene(lam),
-        "anorthite": parametric_anorthite(lam),
-        "ilmenite": parametric_ilmenite(lam),
-        "glass_agglutinate": parametric_glass_agglutinate(lam),
+        "swir_wavelengths_nm": swir_lam,
     }
+    parametric_funcs = {
+        "olivine": parametric_olivine,
+        "pyroxene": parametric_pyroxene,
+        "anorthite": parametric_anorthite,
+        "ilmenite": parametric_ilmenite,
+        "glass_agglutinate": parametric_glass_agglutinate,
+    }
+    for name, fn in parametric_funcs.items():
+        endmembers[name] = fn(lam)
+        endmembers[f"{name}_swir"] = fn(swir_lam)
+
+    return endmembers
 
 
 # ---------------------------------------------------------------------------
@@ -285,16 +299,27 @@ def main(argv: list[str] | None = None) -> int:
         assert arr.shape == (N_SPEC,), f"{name} has wrong shape {arr.shape}"
         assert np.all(np.isfinite(arr)), f"{name} contains NaN/Inf"
         assert (arr >= 0).all() and (arr <= 1).all(), f"{name} outside [0, 1]"
+        # SWIR endmember values
+        swir_arr = endmembers[f"{name}_swir"]
+        assert swir_arr.shape == (N_SWIR,), f"{name}_swir has wrong shape {swir_arr.shape}"
+        assert np.all(np.isfinite(swir_arr)), f"{name}_swir contains NaN/Inf"
+        assert (swir_arr >= 0).all() and (swir_arr <= 1).all(), f"{name}_swir outside [0, 1]"
 
     out.parent.mkdir(parents=True, exist_ok=True)
     np.savez(
         out,
         wavelengths_nm=endmembers["wavelengths_nm"],
+        swir_wavelengths_nm=endmembers["swir_wavelengths_nm"],
         olivine=endmembers["olivine"],
         pyroxene=endmembers["pyroxene"],
         anorthite=endmembers["anorthite"],
         ilmenite=endmembers["ilmenite"],
         glass_agglutinate=endmembers["glass_agglutinate"],
+        olivine_swir=endmembers["olivine_swir"],
+        pyroxene_swir=endmembers["pyroxene_swir"],
+        anorthite_swir=endmembers["anorthite_swir"],
+        ilmenite_swir=endmembers["ilmenite_swir"],
+        glass_agglutinate_swir=endmembers["glass_agglutinate_swir"],
         source=np.asarray(source),
     )
     print(f"[ok] wrote {out}")

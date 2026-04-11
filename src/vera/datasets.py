@@ -28,8 +28,9 @@ from vera.io_csv import (
     extract_leds,
     extract_lif,
     extract_spectra,
+    extract_swir,
 )
-from vera.schema import AS7265X_COLS, N_AS7265X, N_SPEC, get_feature_count
+from vera.schema import AS7265X_COLS, N_AS7265X, N_SPEC, N_SWIR, SWIR_COLS, get_feature_count
 
 
 # ---------------------------------------------------------------------------
@@ -137,6 +138,7 @@ class NumpyBundle:
     class_idx: np.ndarray    # (N,) int64
     ilmenite: np.ndarray     # (N,) float64
     sample_ids: np.ndarray   # (N,) object
+    swir: np.ndarray | None = None     # (N, 2) or None
     as7265x: np.ndarray | None = None  # (N, 18) or None
     sensor_mode: str = "full"
 
@@ -168,6 +170,11 @@ def to_bundle(df: pd.DataFrame, sensor_mode: str | None = None) -> NumpyBundle:
     if sensor_mode in ("multispectral", "combined") and AS7265X_COLS[0] in df.columns:
         as7_data = extract_as7265x(df)
 
+    # SWIR photodiode data (present in v1.2+ data)
+    swir_data: np.ndarray | None = None
+    if SWIR_COLS[0] in df.columns:
+        swir_data = extract_swir(df)
+
     return NumpyBundle(
         spectra=spectra,
         leds=leds,
@@ -175,6 +182,7 @@ def to_bundle(df: pd.DataFrame, sensor_mode: str | None = None) -> NumpyBundle:
         class_idx=class_idx,
         ilmenite=ilmenite,
         sample_ids=df["sample_id"].to_numpy(),
+        swir=swir_data,
         as7265x=as7_data,
         sensor_mode=sensor_mode,
     )
@@ -224,6 +232,9 @@ class RegoscanSpectraDataset(Dataset):
         self.ilmenite = bundle.ilmenite.astype(np.float32)
         self.sample_ids = np.asarray(bundle.sample_ids)
         self.sensor_mode = bundle.sensor_mode
+        self.swir: np.ndarray | None = (
+            bundle.swir.astype(np.float32) if bundle.swir is not None else None
+        )
         self.as7265x: np.ndarray | None = (
             bundle.as7265x.astype(np.float32) if bundle.as7265x is not None else None
         )
@@ -259,6 +270,12 @@ class RegoscanSpectraDataset(Dataset):
             parts.append(spec)
         if self.sensor_mode in ("multispectral", "combined") and self.as7265x is not None:
             parts.append(self.as7265x[idx])
+        if self.swir is not None:
+            swir_val = self.swir[idx].copy()
+            if self.augment:
+                swir_val = swir_val + self._rng.normal(0.0, 0.012, size=swir_val.shape).astype(np.float32)
+                swir_val = np.clip(swir_val, 0.0, 1.5)
+            parts.append(swir_val)
         parts.append(leds)
         parts.append(np.array([lif_val], dtype=np.float32))
 

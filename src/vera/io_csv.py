@@ -22,9 +22,11 @@ from vera.schema import (
     N_AS7265X,
     N_LED,
     N_SPEC,
+    N_SWIR,
     PACKING_DENSITIES,
     SENSOR_MODES,
     SPEC_COLS,
+    SWIR_COLS,
     columns_for_mode,
 )
 
@@ -69,8 +71,10 @@ def validate_dataframe(df: pd.DataFrame) -> None:
     Supports both legacy v1.0 CSVs (no ``sensor_mode`` or AS7265x columns)
     and v1.1 CSVs with optional ``sensor_mode`` and ``as7_*`` columns.
     """
-    # Core columns that must always be present (the v1.0 set)
-    missing = [c for c in ALL_COLUMNS if c not in df.columns]
+    # Core columns that must always be present (v1.0 set minus optional v1.2 SWIR)
+    # SWIR columns are optional for backward compatibility with pre-v1.2 data.
+    required = [c for c in ALL_COLUMNS if c not in SWIR_COLS]
+    missing = [c for c in required if c not in df.columns]
     if missing:
         raise SchemaError(f"missing required columns: {missing[:8]}...")
 
@@ -78,6 +82,7 @@ def validate_dataframe(df: pd.DataFrame) -> None:
     allowed = set(ALL_COLUMNS)
     allowed.add("sensor_mode")
     allowed.update(AS7265X_COLS)
+    allowed.update(SWIR_COLS)
 
     extra = [c for c in df.columns if c not in allowed]
     if extra:
@@ -129,6 +134,17 @@ def validate_dataframe(df: pd.DataFrame) -> None:
         if not np.all(np.isfinite(as7_block)):
             raise SchemaError("as7_* columns contain NaN/Inf")
 
+    # SWIR columns: validate if present (schema v1.2+)
+    if SWIR_COLS[0] in df.columns:
+        swir_present = [c for c in SWIR_COLS if c in df.columns]
+        if len(swir_present) != N_SWIR:
+            raise SchemaError(
+                f"partial SWIR columns: found {len(swir_present)} of {N_SWIR}"
+            )
+        swir_block = df[list(SWIR_COLS)].to_numpy(dtype=np.float64, copy=False)
+        if not np.all(np.isfinite(swir_block)):
+            raise SchemaError("swir_* columns contain NaN/Inf")
+
 
 # ---------------------------------------------------------------------------
 # Reading
@@ -156,10 +172,16 @@ def read_measurements_csv(path: str | Path) -> pd.DataFrame:
         keep = list(ALL_COLUMNS[:len(ALL_COLUMNS)])
         keep.insert(len(ALL_COLUMNS) - len(SPEC_COLS) - len(LED_COLS) - 1, "sensor_mode")
     if AS7265X_COLS[0] in df.columns:
-        # Insert AS7265x columns after spec columns, before LED columns
+        # Insert AS7265x columns after spec columns, before SWIR/LED columns
         spec_end = keep.index(SPEC_COLS[-1]) + 1
         for i, c in enumerate(AS7265X_COLS):
             keep.insert(spec_end + i, c)
+
+    # SWIR columns are part of ALL_COLUMNS in v1.2+ but may be absent
+    # in pre-v1.2 CSVs. If they're not in the DataFrame, strip them
+    # from the ordering list.
+    if SWIR_COLS[0] not in df.columns:
+        keep = [c for c in keep if c not in SWIR_COLS]
 
     df = df[keep].copy()
 
@@ -173,6 +195,9 @@ def read_measurements_csv(path: str | Path) -> pd.DataFrame:
     df[LIF_COL] = df[LIF_COL].astype(np.float64)
     if AS7265X_COLS[0] in df.columns:
         for c in AS7265X_COLS:
+            df[c] = df[c].astype(np.float64)
+    if SWIR_COLS[0] in df.columns:
+        for c in SWIR_COLS:
             df[c] = df[c].astype(np.float64)
     return df
 
@@ -225,6 +250,10 @@ def write_measurements_csv(
         for i, c in enumerate(AS7265X_COLS):
             if c not in ordered:
                 ordered.insert(spec_end + i, c)
+    # SWIR columns: strip from ordering if not in the DataFrame
+    # (pre-v1.2 data written via Measurement.to_row without SWIR)
+    if SWIR_COLS[0] not in df.columns:
+        ordered = [c for c in ordered if c not in SWIR_COLS]
     df = df[ordered]
 
     validate_dataframe(df)
@@ -256,6 +285,16 @@ def extract_lif(df: pd.DataFrame) -> np.ndarray:
     return np.ascontiguousarray(df[LIF_COL].to_numpy(dtype=np.float64, copy=True))
 
 
+def extract_swir(df: pd.DataFrame) -> np.ndarray:
+    """Return the (N, 2) SWIR photodiode block.
+
+    Raises ``KeyError`` if the SWIR columns are not present.
+    """
+    return np.ascontiguousarray(
+        df[list(SWIR_COLS)].to_numpy(dtype=np.float64, copy=True)
+    )
+
+
 def extract_as7265x(df: pd.DataFrame) -> np.ndarray:
     """Return the (N, 18) AS7265x multispectral block.
 
@@ -276,9 +315,9 @@ def extract_feature_matrix(df: pd.DataFrame, sensor_mode: str | None = None) -> 
     =================  ====================================================
     Mode               Shape
     =================  ====================================================
-    ``"full"``         ``(N, 301)`` -- ``[spec | led | lif]``
-    ``"multispectral"````(N, 31)``  -- ``[as7 | led | lif]``
-    ``"combined"``     ``(N, 319)`` -- ``[spec | as7 | led | lif]``
+    ``"full"``         ``(N, 303)`` -- ``[spec | swir | led | lif]``
+    ``"multispectral"````(N, 33)``  -- ``[as7 | swir | led | lif]``
+    ``"combined"``     ``(N, 321)`` -- ``[spec | as7 | swir | led | lif]``
     =================  ====================================================
     """
     if sensor_mode is None:
@@ -287,18 +326,26 @@ def extract_feature_matrix(df: pd.DataFrame, sensor_mode: str | None = None) -> 
     led = extract_leds(df)
     lif = extract_lif(df).reshape(-1, 1)
 
+    # SWIR channels (present in v1.2+ data)
+    has_swir = SWIR_COLS[0] in df.columns
+    swir = extract_swir(df) if has_swir else None
+
+    parts: list[np.ndarray] = []
     if sensor_mode == "full":
-        spec = extract_spectra(df)
-        return np.concatenate([spec, led, lif], axis=1)
+        parts.append(extract_spectra(df))
     elif sensor_mode == "multispectral":
-        as7 = extract_as7265x(df)
-        return np.concatenate([as7, led, lif], axis=1)
+        parts.append(extract_as7265x(df))
     elif sensor_mode == "combined":
-        spec = extract_spectra(df)
-        as7 = extract_as7265x(df)
-        return np.concatenate([spec, as7, led, lif], axis=1)
+        parts.append(extract_spectra(df))
+        parts.append(extract_as7265x(df))
     else:
         raise ValueError(f"Unknown sensor_mode: {sensor_mode!r}")
+
+    if swir is not None:
+        parts.append(swir)
+    parts.append(led)
+    parts.append(lif)
+    return np.concatenate(parts, axis=1)
 
 
 def extract_labels(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
@@ -318,6 +365,7 @@ __all__ = [
     "extract_spectra",
     "extract_leds",
     "extract_lif",
+    "extract_swir",
     "extract_as7265x",
     "extract_feature_matrix",
     "extract_labels",

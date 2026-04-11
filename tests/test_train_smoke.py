@@ -33,7 +33,14 @@ def _toy_endmembers() -> Endmembers:
     ilmenite = 0.05 + 0.05 * x
     glass = 0.04 + 0.22 * x
     spectra = np.stack([olivine, pyroxene, anorthite, ilmenite, glass], axis=0)
-    return Endmembers(wavelengths_nm=lam, spectra=spectra, source="toy")
+    swir = np.array([
+        [0.75, 0.68],
+        [0.55, 0.50],
+        [0.82, 0.80],
+        [0.09, 0.08],
+        [0.28, 0.32],
+    ])
+    return Endmembers(wavelengths_nm=lam, spectra=spectra, swir=swir, source="toy")
 
 
 @pytest.fixture
@@ -180,9 +187,9 @@ def test_cnn_training_is_deterministic_at_fixed_seed(synth_csv: Path, tmp_path: 
 from vera.schema import get_feature_count
 
 
-def test_cnn_forward_multispectral_31_features():
-    """CNN with n_features=31 (multispectral) produces correct output shapes."""
-    n_feat = get_feature_count("multispectral")  # 31
+def test_cnn_forward_multispectral_33_features():
+    """CNN with n_features=33 (multispectral) produces correct output shapes."""
+    n_feat = get_feature_count("multispectral")  # 33
     model = RegoscanCNN(n_features=n_feat)
     x = torch.zeros(2, 1, n_feat)
     logits, ilm = model(x)
@@ -191,9 +198,9 @@ def test_cnn_forward_multispectral_31_features():
     assert (ilm >= 0).all() and (ilm <= 1).all()
 
 
-def test_cnn_forward_combined_319_features():
-    """CNN with n_features=319 (combined) produces correct output shapes."""
-    n_feat = get_feature_count("combined")  # 319
+def test_cnn_forward_combined_321_features():
+    """CNN with n_features=321 (combined) produces correct output shapes."""
+    n_feat = get_feature_count("combined")  # 321
     model = RegoscanCNN(n_features=n_feat)
     x = torch.zeros(2, 1, n_feat)
     logits, ilm = model(x)

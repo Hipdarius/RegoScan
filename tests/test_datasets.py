@@ -21,7 +21,7 @@ from vera.datasets import (
     to_bundle,
 )
 from vera.io_csv import write_measurements_csv
-from vera.schema import N_SPEC, N_LED, N_FEATURES_TOTAL
+from vera.schema import N_SPEC, N_LED, N_SWIR, N_FEATURES_TOTAL
 from vera.synth import Endmembers, synth_dataset
 from vera.schema import WAVELENGTHS
 
@@ -40,7 +40,15 @@ def _toy_endmembers() -> Endmembers:
     ilmenite = 0.05 + 0.05 * x
     glass = 0.04 + 0.22 * x
     spectra = np.stack([olivine, pyroxene, anorthite, ilmenite, glass], axis=0)
-    return Endmembers(wavelengths_nm=lam, spectra=spectra, source="toy")
+    # SWIR: reflectance at 940 & 1050 nm (extrapolated from toy spectra)
+    swir = np.array([
+        [0.75, 0.68],   # olivine: 1-um band onset
+        [0.55, 0.50],   # pyroxene: deeper Band I
+        [0.82, 0.80],   # anorthite: bright, flat
+        [0.09, 0.08],   # ilmenite: very dark
+        [0.28, 0.32],   # glass: rising npFe0 slope
+    ])
+    return Endmembers(wavelengths_nm=lam, spectra=spectra, swir=swir, source="toy")
 
 
 def _toy_df(
@@ -183,8 +191,10 @@ def test_torch_dataset_augmentation_changes_spectrum_block():
     # LED and LIF channels are now augmented with small noise to
     # prevent seed-specific memorization. Check they are close to
     # the originals but not identical (augmentation applied).
+    # Feature order: [spec(288) | swir(2) | led(12) | lif(1)]
+    led_start = N_SPEC + N_SWIR
     np.testing.assert_allclose(
-        a[0, N_SPEC : N_SPEC + N_LED].numpy(),
+        a[0, led_start : led_start + N_LED].numpy(),
         bundle.leds[0],
         atol=0.05,
     )
@@ -225,7 +235,7 @@ def test_torch_dataset_combined_feature_shape():
     bundle = to_bundle(df, sensor_mode="combined")
     ds = RegoscanSpectraDataset(bundle, augment=False)
     feats, cls, ilm = ds[0]
-    expected = get_feature_count("combined")  # 319
+    expected = get_feature_count("combined")  # 321
     assert feats.shape == (1, expected)
     assert feats.dtype == torch.float32
 
@@ -234,7 +244,7 @@ def test_torch_dataset_multispectral_feature_shape():
     df = _toy_df(n_samples=4, m_per_sample=2, sensor_mode="combined")
     bundle = to_bundle(df, sensor_mode="combined")
     # Override sensor_mode on the bundle to "multispectral" to test
-    # that the Dataset only uses as7265x + led + lif
+    # that the Dataset only uses as7265x + swir + led + lif
     bundle_ms = NumpyBundle(
         spectra=bundle.spectra,
         leds=bundle.leds,
@@ -242,11 +252,12 @@ def test_torch_dataset_multispectral_feature_shape():
         class_idx=bundle.class_idx,
         ilmenite=bundle.ilmenite,
         sample_ids=bundle.sample_ids,
+        swir=bundle.swir,
         as7265x=bundle.as7265x,
         sensor_mode="multispectral",
     )
     ds = RegoscanSpectraDataset(bundle_ms, augment=False)
     feats, cls, ilm = ds[0]
-    expected = get_feature_count("multispectral")  # 31
+    expected = get_feature_count("multispectral")  # 33
     assert feats.shape == (1, expected)
     assert feats.dtype == torch.float32

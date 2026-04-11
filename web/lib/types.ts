@@ -14,6 +14,7 @@ export interface PredictionResponse {
   ilmenite_fraction: number;
   confidence: number;
   model_version: string;
+  swir?: number[];
   as7265x?: number[];
 }
 
@@ -21,6 +22,7 @@ export interface DemoResponse extends PredictionResponse {
   spec: number[];
   led: number[];
   lif_450lp: number;
+  swir?: number[];
   as7265x?: number[];
   true_class: string;
   true_ilmenite_fraction: number;
@@ -31,6 +33,7 @@ export interface MetaResponse {
   class_names: string[];
   wavelengths_nm: number[];
   led_wavelengths_nm: number[];
+  swir_wavelengths_nm?: number[];
   n_features_total: number;
   model_loaded: boolean;
   model_sha256: string | null;

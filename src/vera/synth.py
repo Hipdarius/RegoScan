@@ -24,8 +24,10 @@ from vera.schema import (
     Measurement,
     N_LED,
     N_SPEC,
+    N_SWIR,
     PACKING_DENSITIES,
     SENSOR_MODES,
+    SWIR_WAVELENGTHS_NM,
     WAVELENGTHS,
 )
 
@@ -51,9 +53,10 @@ LED_FWHM_NM: float = 25.0
 
 @dataclass(frozen=True)
 class Endmembers:
-    """Ref spectra on the 288-px grid."""
+    """Ref spectra on the 288-px grid + SWIR reflectance points."""
     wavelengths_nm: np.ndarray
-    spectra: np.ndarray  # (5, 288) — one row per endmember
+    spectra: np.ndarray      # (5, 288) — one row per endmember
+    swir: np.ndarray         # (5, 2)  — reflectance at 940 & 1050 nm
     source: str
 
     @property
@@ -66,19 +69,34 @@ def load_endmembers(path: str | Path) -> Endmembers:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(f"Missing endmember cache: {path}")
-    
+
     data = np.load(path, allow_pickle=False)
     lam = data["wavelengths_nm"].astype(np.float64)
-    
+
     # Validation
     if lam.shape != (N_SPEC,):
         raise ValueError(f"Bad wavelength grid shape: {lam.shape}")
     if not np.allclose(lam, WAVELENGTHS):
         raise ValueError("Grid mismatch with schema.WAVELENGTHS")
-        
+
     rows = np.stack([data[n].astype(np.float64) for n in ENDMEMBER_NAMES], axis=0)
+
+    # SWIR endmember reflectance (v1.2+); backward compat with old caches
+    if f"{ENDMEMBER_NAMES[0]}_swir" in data.files:
+        swir_rows = np.stack(
+            [data[f"{n}_swir"].astype(np.float64) for n in ENDMEMBER_NAMES],
+            axis=0,
+        )
+    else:
+        # Fallback: linearly extrapolate from the last two spec channels
+        # (rough but keeps old caches working until regenerated)
+        swir_rows = np.column_stack([
+            rows[:, -1] * 0.95,   # approximate 940 nm
+            rows[:, -1] * 0.88,   # approximate 1050 nm
+        ])
+
     source = str(data["source"]) if "source" in data.files else "unknown"
-    return Endmembers(wavelengths_nm=lam, spectra=rows, source=source)
+    return Endmembers(wavelengths_nm=lam, spectra=rows, swir=swir_rows, source=source)
 
 
 def fractions_for_class(klass: str, rng: np.random.Generator) -> np.ndarray:
@@ -258,6 +276,23 @@ def _as7265x_response(spectrum: np.ndarray) -> np.ndarray:
     return out
 
 
+def _perturb_endmembers_swir(
+    swir: np.ndarray, rng: np.random.Generator
+) -> np.ndarray:
+    """Apply matching perturbation to SWIR endmember values.
+
+    Uses the same perturbation model as the spectral endmembers:
+    multiplicative gain (±8%) and per-channel noise (sigma=0.005).
+    Spectral tilt is adapted for the 2-point SWIR grid.
+    """
+    out = swir.copy()
+    n_em, n_pts = out.shape
+    gain = 1.0 + rng.normal(0.0, 0.08, size=(n_em, 1))
+    out = out * gain
+    out = out + rng.normal(0.0, 0.005, size=out.shape)
+    return np.clip(out, 0.0, 1.5)
+
+
 def _perturb_endmembers(
     endmembers: Endmembers, rng: np.random.Generator
 ) -> np.ndarray:
@@ -344,7 +379,9 @@ def synth_measurement(
     # Pipeline: perturb endmember spectra to simulate natural
     # mineralogical variation, then mix with the target fractions
     perturbed = _perturb_endmembers(endmembers, rng)
+    perturbed_swir = _perturb_endmembers_swir(endmembers.swir, rng)
     base = fractions @ perturbed
+    base_swir = fractions @ perturbed_swir
 
     # Noise model
     gain = 1.0 + rng.normal(0.0, noise.gain_sigma, size=N_SPEC)
@@ -380,6 +417,15 @@ def synth_measurement(
     lif += rng.normal(0.0, noise.lif_noise_sigma)
     lif = float(max(lif, 0.0))
 
+    # --- SWIR InGaAs photodiode channels ---
+    # Apply matching intensity/noise pipeline to the SWIR reflectance
+    swir_clean = base_swir * intensity
+    swir = swir_clean + rng.normal(0.0, noise.led_noise_sigma, size=N_SWIR)
+    # 16-bit ADC quantization (ADS1115)
+    swir = np.round(swir * 65535.0) / 65535.0
+    swir = np.clip(swir, 0.0, 1.5)
+    swir_data: list[float] = [float(x) for x in swir]
+
     # --- AS7265x channels (when requested) ---
     as7265x_data: list[float] | None = None
     if sensor_mode in ("multispectral", "combined"):
@@ -406,6 +452,7 @@ def synth_measurement(
         spec=[float(x) for x in spec],
         led=[float(x) for x in led],
         lif_450lp=lif,
+        swir=swir_data,
         as7265x=as7265x_data,
     )
 

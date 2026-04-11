@@ -34,6 +34,14 @@ size_t transmitFrame(const ScanFrame& frame, Print& stream) {
     // LIF fluorescence channel
     doc["lif_450lp"] = frame.lif_450lp;
 
+    // SWIR InGaAs photodiode (only when ADS1115 is present)
+    if (frame.has_swir) {
+        JsonArray swir = doc["swir"].to<JsonArray>();
+        for (uint8_t k = 0; k < N_SWIR_CHANNELS; k++) {
+            swir.add(frame.swir[k]);
+        }
+    }
+
     // AS7265x 18-band multispectral (only when sensor is present)
     if (frame.has_as7265x) {
         JsonArray as7 = doc["as7"].to<JsonArray>();

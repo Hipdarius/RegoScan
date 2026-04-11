@@ -87,10 +87,10 @@ constexpr uint32_t THERM_SERIES_OHM = 10000;
 
 // ── JSON serialization budget ───────────────────────────────────
 // 288 spec floats × ~8 chars + 18 as7265x floats × ~8 chars +
-// 12 led × ~8 chars + overhead ≈ 3.2 KB.
-// 4480 bytes accommodates the optional AS7265x array (~150 extra
-// bytes) while staying within a single Serial.write() call.
-constexpr size_t JSON_BUFFER_BYTES = 4480;
+// 2 swir floats × ~8 chars + 12 led × ~8 chars + overhead ≈ 3.2 KB.
+// 4512 bytes accommodates the optional AS7265x and SWIR arrays
+// while staying within a single Serial.write() call.
+constexpr size_t JSON_BUFFER_BYTES = 4512;
 
 // ── Measurement averaging ──────────────────────────────────────
 // Number of readings to accumulate and average per measurement
@@ -114,6 +114,18 @@ constexpr uint8_t PIN_AS7265X_SDA   = 47;
 constexpr uint8_t PIN_AS7265X_SCL   = 48;
 constexpr uint8_t AS7265X_I2C_ADDR  = 0x49;
 constexpr uint8_t N_AS7265X_BANDS   = 18;
+
+// ── SWIR InGaAs Photodiode (ADS1115 16-bit ADC, I²C) ───────────
+// Hamamatsu G12180-010A (900–1700 nm) + OPA380 transimpedance amp.
+// Two reflectance points beyond the C12880MA cutoff:
+//   940 nm:  reuses existing LED — captures pyroxene Band I center
+//  1050 nm:  dedicated LED — captures olivine Band I center
+constexpr uint8_t ADS1115_I2C_ADDR = 0x48;  // ADDR pin → GND
+constexpr uint8_t N_SWIR_CHANNELS  = 2;
+constexpr uint16_t SWIR_WAVELENGTHS_NM[N_SWIR_CHANNELS] = {940, 1050};
+
+// 1050 nm LED (InGaAs emitter) — requires separate GPIO
+constexpr uint8_t PIN_LED_1050 = 9;  // NIR LED for SWIR channel 2
 
 // ── SD Card (SPI) ──────────────────────────────────────────────
 constexpr uint8_t PIN_SD_CS = 13;

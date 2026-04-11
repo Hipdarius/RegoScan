@@ -47,7 +47,15 @@ def _toy_endmembers() -> Endmembers:
     ilmenite = 0.05 + 0.05 * x
     glass = 0.04 + 0.22 * x  # dark, steep red slope — npFe0 signature
     spectra = np.stack([olivine, pyroxene, anorthite, ilmenite, glass], axis=0)
-    return Endmembers(wavelengths_nm=lam, spectra=spectra, source="toy")
+    # SWIR: reflectance at 940 & 1050 nm (extrapolated from toy spectra)
+    swir = np.array([
+        [0.75, 0.68],   # olivine: 1-um band onset
+        [0.55, 0.50],   # pyroxene: deeper Band I
+        [0.82, 0.80],   # anorthite: bright, flat
+        [0.09, 0.08],   # ilmenite: very dark
+        [0.28, 0.32],   # glass: rising npFe0 slope
+    ])
+    return Endmembers(wavelengths_nm=lam, spectra=spectra, swir=swir, source="toy")
 
 
 @pytest.fixture
@@ -323,3 +331,49 @@ def test_as7265x_values_have_12_percent_noise_envelope(endmembers):
     cv = stds / (means + 1e-12)
     assert (cv > 0.01).all(), f"noise too small: cv = {cv}"
     assert (cv < 0.20).all(), f"noise too large: cv = {cv}"
+
+
+# ---------------------------------------------------------------------------
+# SWIR InGaAs photodiode support (v1.2)
+# ---------------------------------------------------------------------------
+
+
+from vera.schema import N_SWIR
+
+
+def test_synth_measurement_always_produces_swir(endmembers):
+    """SWIR data should always be generated regardless of sensor_mode."""
+    for mode in ("full", "multispectral", "combined"):
+        rng = np.random.default_rng(42)
+        f = fractions_for_class("olivine_rich", rng)
+        m = synth_measurement(
+            sample_id="S0",
+            mineral_class="olivine_rich",
+            fractions=f,
+            endmembers=endmembers,
+            rng=rng,
+            sensor_mode=mode,
+        )
+        assert m.swir is not None, f"SWIR missing for mode={mode}"
+        assert len(m.swir) == N_SWIR
+        arr = np.asarray(m.swir)
+        assert (arr >= 0.0).all() and (arr <= 1.5).all()
+
+
+def test_swir_olivine_deeper_than_anorthite(endmembers):
+    """Olivine should show deeper 1-um absorption (lower SWIR reflectance
+    at 1050 nm) than the bright anorthite endmember."""
+    rng = np.random.default_rng(0)
+    f_ol = np.array([1.0, 0.0, 0.0, 0.0, 0.0])
+    f_an = np.array([0.0, 0.0, 1.0, 0.0, 0.0])
+    swir_ol = []
+    swir_an = []
+    for _ in range(30):
+        rng_ol = np.random.default_rng(rng.integers(0, 2**31))
+        rng_an = np.random.default_rng(rng.integers(0, 2**31))
+        m_ol = synth_measurement("S_ol", "olivine_rich", f_ol, endmembers, rng_ol)
+        m_an = synth_measurement("S_an", "anorthositic", f_an, endmembers, rng_an)
+        swir_ol.append(m_ol.swir[1])  # 1050 nm
+        swir_an.append(m_an.swir[1])  # 1050 nm
+    assert np.mean(swir_ol) < np.mean(swir_an), \
+        "olivine should have lower 1050 nm reflectance than anorthite"

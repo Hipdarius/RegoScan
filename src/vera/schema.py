@@ -23,7 +23,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # Versioning
 # ---------------------------------------------------------------------------
 
-SCHEMA_VERSION: Final[str] = "1.1.0"
+SCHEMA_VERSION: Final[str] = "1.2.0"
 
 # ---------------------------------------------------------------------------
 # Spectrometer grid (Hamamatsu C12880MA)
@@ -54,6 +54,20 @@ N_LED: Final[int] = len(LED_COLS)
 LIF_COL: Final[str] = "lif_450lp"  # 405 nm excitation, 450 nm longpass
 
 # ---------------------------------------------------------------------------
+# SWIR photodiode channels (InGaAs G12180-010A)
+# ---------------------------------------------------------------------------
+# Two reflectance points beyond the C12880MA's 850 nm cutoff, measured via
+# an InGaAs photodiode + transimpedance amplifier + ADS1115 16-bit ADC.
+#   940 nm: uses existing 940 nm LED — captures pyroxene Band I center
+#  1050 nm: new dedicated LED — captures olivine Band I center
+# The 940/1050 nm reflectance ratio is the single most diagnostic feature
+# for olivine vs pyroxene discrimination (Burns 1993, Adams 1974).
+
+SWIR_WAVELENGTHS_NM: Final[tuple[int, ...]] = (940, 1050)
+N_SWIR: Final[int] = 2
+SWIR_COLS: Final[tuple[str, ...]] = tuple(f"swir_{w}" for w in SWIR_WAVELENGTHS_NM)
+
+# ---------------------------------------------------------------------------
 # AS7265x 18-band multispectral sensor
 # ---------------------------------------------------------------------------
 
@@ -71,10 +85,11 @@ SensorMode = Literal["full", "multispectral", "combined"]
 SENSOR_MODES: Final[tuple[str, ...]] = ("full", "multispectral", "combined")
 
 # Feature counts per sensor mode
+# SWIR channels (2) are always included when the photodiode is present.
 _FEATURE_COUNTS: Final[dict[str, int]] = {
-    "full": N_SPEC + N_LED + 1,              # 288 + 12 + 1 = 301
-    "multispectral": N_AS7265X + N_LED + 1,  # 18 + 12 + 1 = 31
-    "combined": N_SPEC + N_AS7265X + N_LED + 1,  # 288 + 18 + 12 + 1 = 319
+    "full": N_SPEC + N_SWIR + N_LED + 1,              # 288 + 2 + 12 + 1 = 303
+    "multispectral": N_AS7265X + N_SWIR + N_LED + 1,  # 18 + 2 + 12 + 1 = 33
+    "combined": N_SPEC + N_AS7265X + N_SWIR + N_LED + 1,  # 288 + 18 + 2 + 12 + 1 = 321
 }
 
 
@@ -124,26 +139,28 @@ PACKING_DENSITIES: Final[tuple[str, ...]] = ("loose", "medium", "packed")
 ALL_COLUMNS: Final[tuple[str, ...]] = (
     *META_COLS,
     *SPEC_COLS,
+    *SWIR_COLS,
     *LED_COLS,
     LIF_COL,
 )
 
-N_FEATURES_TOTAL: Final[int] = N_SPEC + N_LED + 1  # 288 + 12 + 1 = 301
+N_FEATURES_TOTAL: Final[int] = N_SPEC + N_SWIR + N_LED + 1  # 288 + 2 + 12 + 1 = 303
 
 
 def columns_for_mode(sensor_mode: str = "full") -> tuple[str, ...]:
     """Return the ordered column tuple for a given sensor mode.
 
     This determines which columns appear in a CSV for a given sensor
-    configuration. ``ALL_COLUMNS`` remains the v1.0 "full" set for
-    backward compatibility.
+    configuration. SWIR columns are always included when the photodiode
+    is present (schema v1.2+). ``ALL_COLUMNS`` includes SWIR for the
+    default ``"full"`` mode.
     """
     if sensor_mode == "full":
-        return (*META_COLS, "sensor_mode", *SPEC_COLS, *LED_COLS, LIF_COL)
+        return (*META_COLS, "sensor_mode", *SPEC_COLS, *SWIR_COLS, *LED_COLS, LIF_COL)
     elif sensor_mode == "multispectral":
-        return (*META_COLS, "sensor_mode", *AS7265X_COLS, *LED_COLS, LIF_COL)
+        return (*META_COLS, "sensor_mode", *AS7265X_COLS, *SWIR_COLS, *LED_COLS, LIF_COL)
     elif sensor_mode == "combined":
-        return (*META_COLS, "sensor_mode", *SPEC_COLS, *AS7265X_COLS, *LED_COLS, LIF_COL)
+        return (*META_COLS, "sensor_mode", *SPEC_COLS, *AS7265X_COLS, *SWIR_COLS, *LED_COLS, LIF_COL)
     raise ValueError(f"Unknown sensor_mode: {sensor_mode!r}")
 
 
@@ -185,6 +202,9 @@ class Measurement(BaseModel):
     led: list[float] = Field(min_length=N_LED, max_length=N_LED)
     lif_450lp: float
 
+    # SWIR photodiode channels (optional; present when InGaAs photodiode installed)
+    swir: list[float] | None = Field(default=None)
+
     # AS7265x 18-band multispectral (optional; present when mode != "full")
     as7265x: list[float] | None = Field(default=None)
 
@@ -201,6 +221,20 @@ class Measurement(BaseModel):
     def _lif_finite(cls, v: float) -> float:
         if not np.isfinite(v):
             raise ValueError("lif_450lp must be finite")
+        return v
+
+    @field_validator("swir")
+    @classmethod
+    def _swir_valid(cls, v: list[float] | None) -> list[float] | None:
+        if v is None:
+            return v
+        if len(v) != N_SWIR:
+            raise ValueError(
+                f"swir must have exactly {N_SWIR} values; got {len(v)}"
+            )
+        arr = np.asarray(v, dtype=np.float64)
+        if not np.all(np.isfinite(arr)):
+            raise ValueError("swir values must all be finite")
         return v
 
     @field_validator("as7265x")
@@ -240,6 +274,9 @@ class Measurement(BaseModel):
         if self.as7265x is not None:
             for col, val in zip(AS7265X_COLS, self.as7265x):
                 row[col] = float(val)
+        if self.swir is not None:
+            for col, val in zip(SWIR_COLS, self.swir):
+                row[col] = float(val)
         for col, val in zip(LED_COLS, self.led):
             row[col] = float(val)
         row[LIF_COL] = float(self.lif_450lp)
@@ -256,6 +293,11 @@ class Measurement(BaseModel):
         if AS7265X_COLS[0] in row:
             as7265x = [float(row[c]) for c in AS7265X_COLS]
 
+        # SWIR columns are optional (backward compat with pre-v1.2 CSVs)
+        swir: list[float] | None = None
+        if SWIR_COLS[0] in row:
+            swir = [float(row[c]) for c in SWIR_COLS]
+
         sensor_mode_val = str(row.get("sensor_mode", "full"))
 
         return cls(
@@ -271,6 +313,7 @@ class Measurement(BaseModel):
             spec=spec,
             led=led,
             lif_450lp=float(row[LIF_COL]),
+            swir=swir,
             as7265x=as7265x,
         )
 
@@ -286,6 +329,9 @@ __all__ = [
     "LED_COLS",
     "N_LED",
     "LIF_COL",
+    "SWIR_WAVELENGTHS_NM",
+    "N_SWIR",
+    "SWIR_COLS",
     "AS7265X_BANDS",
     "N_AS7265X",
     "AS7265X_COLS",

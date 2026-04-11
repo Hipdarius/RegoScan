@@ -55,9 +55,11 @@ from vera.schema import (  # noqa: E402
     N_FEATURES_TOTAL,
     N_LED,
     N_SPEC,
+    N_SWIR,
     SCHEMA_VERSION,
     SENSOR_MODES,
     SensorMode,
+    SWIR_WAVELENGTHS_NM,
     WAVELENGTHS,
     get_feature_count,
 )
@@ -140,6 +142,7 @@ class SpectrumRequest(BaseModel):
     spec: list[float] = Field(min_length=N_SPEC, max_length=N_SPEC)
     led: list[float] = Field(min_length=N_LED, max_length=N_LED)
     lif_450lp: float
+    swir: list[float] | None = None
     as7265x: list[float] | None = None
 
 
@@ -161,6 +164,7 @@ class DemoResponse(PredictionResponse):
     spec: list[float]
     led: list[float]
     lif_450lp: float
+    swir: list[float] | None = None
     as7265x: list[float] | None = None
     true_class: str
     true_ilmenite_fraction: float
@@ -176,6 +180,7 @@ class MetaResponse(BaseModel):
     model_sha256: str | None
     model_run_dir: str | None
     sensor_mode: str
+    swir_wavelengths_nm: list[int] | None = None
     as7265x_bands_nm: list[int] | None = None
 
 
@@ -270,6 +275,7 @@ def meta() -> MetaResponse:
         model_sha256=_model_sha256(),
         model_run_dir=str(_RUN_DIR) if _RUN_DIR is not None else None,
         sensor_mode=sensor_mode,
+        swir_wavelengths_nm=list(SWIR_WAVELENGTHS_NM),
         as7265x_bands_nm=as7265x_bands,
     )
 
@@ -320,6 +326,9 @@ def predict_demo(seed: int | None = None) -> dict[str, Any]:
         "true_class": demo["true_class"],
         "true_ilmenite_fraction": float(demo["true_ilmenite_fraction"]),
     }
+    # Include SWIR data when available
+    if "swir" in demo and demo["swir"] is not None:
+        extras["swir"] = demo["swir"].tolist()
     # Include AS7265x data when available from the demo synthesizer
     if "as7265x" in demo and demo["as7265x"] is not None:
         extras["as7265x"] = demo["as7265x"].tolist()
