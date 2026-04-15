@@ -165,18 +165,22 @@ class InferenceEngine:
         ----------
         features : np.ndarray
             Shape ``(expected_features,)``.  The exact size depends on
-            the ``sensor_mode`` stored in ``meta.json``:
-
-            * ``"full"``          — 301 features (spec_288 + led_12 + lif_1)
-            * ``"multispectral"`` —  31 features (as7265x_18 + led_12 + lif_1)
-            * ``"combined"``      — 319 features (spec_288 + as7265x_18 + led_12 + lif_1)
+            the ``sensor_mode`` stored in ``meta.json`` (see schema).
 
         Returns
         -------
         dict
-            ``class_index`` (int), ``probabilities`` (ndarray of shape
-            ``(5,)``), ``ilmenite_fraction`` (float clamped to [0, 1]).
+            * ``class_index`` (int) — argmax over softmax
+            * ``probabilities`` (ndarray of shape ``(K,)``)
+            * ``ilmenite_fraction`` (float clamped to [0, 1])
+            * ``confidence`` (float) — max softmax probability
+            * ``entropy`` (float) — Shannon entropy in nats
+            * ``margin`` (float) — top-1 minus top-2 probability
+            * ``status`` (str) — one of ``nominal`` / ``borderline``
+              / ``low_confidence`` / ``likely_ood``
         """
+        from .uncertainty import classify_uncertainty
+
         n = self._n_features
         if features.size != n:
             raise ValueError(
@@ -193,10 +197,17 @@ class InferenceEngine:
         # on whether squeeze was applied during ONNX export.
         ilm_val = float(ilmenite.flat[0])
 
+        # Uncertainty quantification (entropy + margin + status).
+        u = classify_uncertainty(probs)
+
         return {
             "class_index": class_idx,
             "probabilities": probs,
             "ilmenite_fraction": float(np.clip(ilm_val, 0.0, 1.0)),
+            "confidence": u.confidence,
+            "entropy": u.entropy,
+            "margin": u.margin,
+            "status": u.status,
         }
 
 

@@ -7,12 +7,21 @@ export interface ClassProbability {
   probability: number;
 }
 
+export type PredictionStatus =
+  | "nominal"
+  | "borderline"
+  | "low_confidence"
+  | "likely_ood";
+
 export interface PredictionResponse {
   predicted_class: string;
   predicted_class_index: number;
   probabilities: ClassProbability[];
   ilmenite_fraction: number;
   confidence: number;
+  entropy?: number;
+  margin?: number;
+  status?: PredictionStatus;
   model_version: string;
   swir?: number[];
   as7265x?: number[];
