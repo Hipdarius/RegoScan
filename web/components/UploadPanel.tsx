@@ -63,9 +63,8 @@ export function UploadPanel({
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const cyanText = isLight ? "#0284c7" : "#38bdf8";
-  const mutedText = isLight ? "#94a3b8" : "#64748b";
-  const amberText = isLight ? "#f59e0b" : "#f59e0b";
-  const borderColor = isLight ? "rgba(15, 23, 42, 0.12)" : "rgba(56, 189, 248, 0.15)";
+  const mutedText = isLight ? "#64748b" : "#94a3b8";
+  const amberText = "#f59e0b";
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -121,19 +120,14 @@ export function UploadPanel({
       />
       <div className="flex items-center gap-3">
         <motion.button
-          whileHover={{ scale: disabled ? 1 : 1.02 }}
-          whileTap={{ scale: disabled ? 1 : 0.98 }}
+          whileTap={{ scale: disabled ? 1 : 0.99 }}
           onClick={() => fileRef.current?.click()}
           disabled={disabled || uploading}
-          className="group relative overflow-hidden rounded-lg border px-5 py-2.5 font-mono text-xs uppercase tracking-[0.2em] transition-all disabled:cursor-not-allowed disabled:opacity-40"
+          className="group relative overflow-hidden border px-5 py-3 font-mono text-[11px] uppercase tracking-[0.28em] transition-colors disabled:cursor-not-allowed disabled:opacity-40"
           style={{
-            borderColor: isLight
-              ? "rgba(2, 132, 199, 0.25)"
-              : "rgba(34, 211, 238, 0.25)",
-            background: isLight
-              ? "rgba(2, 132, 199, 0.04)"
-              : "rgba(34, 211, 238, 0.05)",
-            color: cyanText,
+            borderColor: isLight ? "#cbd5e1" : "#334155",
+            background: "transparent",
+            color: mutedText,
           }}
         >
           <span className="flex items-center gap-2">
@@ -149,7 +143,7 @@ export function UploadPanel({
               <polyline points="17 8 12 3 7 8" />
               <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
-            {uploading ? "Processing\u2026" : "Upload CSV"}
+            {uploading ? "Processing…" : "Upload CSV"}
           </span>
         </motion.button>
         {fileName && (

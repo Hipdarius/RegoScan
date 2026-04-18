@@ -1,6 +1,21 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Chakra_Petch, Azeret_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
+
+const fontDisplay = Chakra_Petch({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const fontMono = Azeret_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "VERA Mission Console",
@@ -17,7 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`dark ${fontDisplay.variable} ${fontMono.variable}`}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen antialiased">
         <ThemeProvider>
           <div className="relative z-10">{children}</div>

@@ -13,134 +13,147 @@ export function Hero({
   metaLoading?: boolean;
 }) {
   const { theme, toggle } = useTheme();
+  const isLight = theme === "light";
+
+  const cyan = isLight ? "#0284c7" : "#38bdf8";
+  const fg = isLight ? "#0f172a" : "#e2e8f0";
+  const muted = isLight ? "#475569" : "#94a3b8";
+  const dim = isLight ? "#94a3b8" : "#64748b";
+  const borderCol = isLight ? "#e2e8f0" : "#1e293b";
+  const headerBg = isLight ? "#f8fafc" : "#0b1220";
 
   return (
-    <header className="relative overflow-hidden border-b border-cyan-glow/15 dark:border-cyan-glow/15 light:border-slate-200 bg-gradient-to-b from-void-900 via-void-800 to-void-900 dark:from-void-900 dark:via-void-800 dark:to-void-900 px-6 py-12 sm:py-16"
-      style={{
-        background: theme === "light"
-          ? "linear-gradient(to bottom, #f8fafc, #f1f5f9, #f8fafc)"
-          : undefined,
-        borderColor: theme === "light" ? "#e2e8f0" : undefined,
-      }}
+    <header
+      className="relative border-b px-6 py-10 sm:py-14"
+      style={{ borderColor: borderCol, background: headerBg }}
     >
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8">
         <div className="flex items-center justify-between">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex items-center gap-3 text-xs font-mono uppercase tracking-[0.3em]"
-            style={{ color: theme === "light" ? "#0369a1" : "rgba(56, 189, 248, 0.8)" }}
+            transition={{ duration: 0.4 }}
+            className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.3em]"
+            style={{ color: muted }}
           >
             <span
-              className="inline-block h-2 w-2 animate-pulse-soft rounded-full"
-              style={{
-                backgroundColor: theme === "light" ? "#0284c7" : "#38bdf8",
-                boxShadow: theme === "light" ? "0 0 12px rgba(2, 132, 199, 0.4)" : "0 0 24px rgba(56, 189, 248, 0.35)",
-              }}
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ backgroundColor: cyan }}
             />
-            Mission Control · Lunar Surface Operations
+            Bench mode · Synthetic acquisition pipeline
           </motion.div>
 
           <button
             onClick={toggle}
-            className="flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider transition-all"
-            style={{
-              borderColor: theme === "light" ? "#cbd5e1" : "rgba(56, 189, 248, 0.3)",
-              background: theme === "light" ? "rgba(255,255,255,0.8)" : "rgba(15, 23, 42, 0.6)",
-              color: theme === "light" ? "#475569" : "#94a3b8",
-            }}
+            className="flex items-center gap-2 border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors hover:border-sky-500/60"
+            style={{ borderColor: borderCol, background: "transparent", color: muted }}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
           >
             {theme === "dark" ? (
               <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="12" cy="12" r="5" />
+                  <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+                </svg>
                 Light
               </>
             ) : (
               <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
                 Dark
               </>
             )}
           </button>
         </div>
 
-        <motion.h1
-          initial={{ opacity: 0, y: 16 }}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.05 }}
-          className="font-mono text-4xl font-semibold leading-tight sm:text-6xl"
+          transition={{ duration: 0.5, delay: 0.05 }}
+          className="flex flex-col gap-3"
         >
-          <span
-            className="bg-clip-text text-transparent"
-            style={{
-              backgroundImage: theme === "light"
-                ? "linear-gradient(to right, #0284c7, #0f172a, #7c3aed)"
-                : "linear-gradient(to right, #38bdf8, #f1f5f9, #8b5cf6)",
-            }}
+          <h1
+            className="font-display text-6xl font-semibold leading-[0.9] tracking-[-0.01em] sm:text-8xl"
+            style={{ color: fg }}
           >
             VERA
-          </span>
-          <span
-            className="block text-base font-normal tracking-wider sm:text-lg"
-            style={{ color: theme === "light" ? "#64748b" : "#94a3b8" }}
+          </h1>
+          <p
+            className="font-mono text-xs uppercase tracking-[0.32em]"
+            style={{ color: cyan }}
           >
-            VIS/NIR + 405 nm LIF mineral classification probe
-          </span>
-        </motion.h1>
+            Visible &amp; Emission Regolith Assessment
+          </p>
+        </motion.div>
 
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, delay: 0.15 }}
-          className="max-w-2xl text-sm leading-relaxed sm:text-base"
-          style={{ color: theme === "light" ? "#64748b" : "#94a3b8" }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="max-w-2xl text-[13px] leading-relaxed sm:text-sm"
+          style={{ color: muted }}
         >
-          A compact spectrometer that fingerprints lunar regolith in real time.
-          Click{" "}
-          <span style={{ color: theme === "light" ? "#0284c7" : "#38bdf8" }}>
-            Initiate Scan
-          </span>{" "}
-          to fire a synthetic acquisition through the trained 1D&nbsp;ResNet and
-          read out a mineral class plus ilmenite mass fraction in milliseconds.
+          Compact VIS/NIR spectrometer with 405&nbsp;nm LIF and dual SWIR
+          photodiodes at 940 / 1050&nbsp;nm, targeting in-situ mineral
+          classification of lunar regolith. This console runs against{" "}
+          <span style={{ color: fg }}>synthetic data</span> through the trained
+          1D&nbsp;ResNet; real-sample validation pending.
         </motion.p>
 
-        <div className="flex flex-wrap gap-3 font-mono text-[10px] uppercase tracking-wider">
+        <dl
+          className="grid w-full grid-cols-2 gap-px border sm:grid-cols-4"
+          style={{ borderColor: borderCol, background: borderCol }}
+        >
           {metaLoading ? (
-            <Pill label="status" value="connecting..." ok={false} theme={theme} />
+            <Fact label="Status" value="Connecting…" ok={false} fg={fg} muted={dim} bg={headerBg} />
           ) : (
             <>
-              <Pill label="schema" value={schemaVersion ?? "?"} ok={!!schemaVersion} theme={theme} />
-              <Pill label="model" value={modelLoaded ? "ONNX online" : "offline"} ok={modelLoaded} theme={theme} />
-              <Pill label="runtime" value="onnxruntime" ok theme={theme} />
+              <Fact label="Schema" value={schemaVersion ?? "—"} ok={!!schemaVersion} fg={fg} muted={dim} bg={headerBg} />
+              <Fact label="Model" value={modelLoaded ? "Online" : "Offline"} ok={modelLoaded} fg={fg} muted={dim} bg={headerBg} />
+              <Fact label="Runtime" value="onnxruntime" ok fg={fg} muted={dim} bg={headerBg} />
+              <Fact label="Cross-seed accuracy" value="99.3 %" ok fg={fg} muted={dim} bg={headerBg} note="synthetic" />
             </>
           )}
-        </div>
+        </dl>
       </div>
     </header>
   );
 }
 
-function Pill({ label, value, ok, theme }: { label: string; value: string; ok: boolean; theme: string }) {
-  const isLight = theme === "light";
-  const okColor = isLight ? "#0284c7" : "#34d399";
-  const warnColor = isLight ? "#f59e0b" : "#f59e0b";
-  const color = ok ? okColor : warnColor;
-
+function Fact({
+  label,
+  value,
+  ok,
+  fg,
+  muted,
+  bg,
+  note,
+}: {
+  label: string;
+  value: string;
+  ok: boolean;
+  fg: string;
+  muted: string;
+  bg: string;
+  note?: string;
+}) {
   return (
-    <div
-      className="flex items-center gap-2 rounded-full border px-3 py-1"
-      style={{
-        borderColor: ok
-          ? (isLight ? "rgba(2, 132, 199, 0.3)" : "rgba(52, 211, 153, 0.3)")
-          : (isLight ? "rgba(245, 158, 11, 0.3)" : "rgba(245, 158, 11, 0.3)"),
-        background: isLight ? "rgba(255,255,255,0.6)" : "rgba(15, 23, 42, 0.6)",
-        color,
-        boxShadow: isLight ? "none" : (ok ? "0 0 24px rgba(52, 211, 153, 0.35)" : "0 0 24px rgba(245, 158, 11, 0.35)"),
-      }}
-    >
-      <span style={{ color: isLight ? "#94a3b8" : "#64748b" }}>{label}</span>
-      <span>{value}</span>
+    <div className="flex flex-col gap-1 px-4 py-3" style={{ background: bg }}>
+      <dt className="font-mono text-[9px] uppercase tracking-[0.25em]" style={{ color: muted }}>
+        {label}
+      </dt>
+      <dd className="flex items-baseline gap-2">
+        <span className="font-mono text-sm" style={{ color: ok ? fg : "#f59e0b" }}>
+          {value}
+        </span>
+        {note && (
+          <span className="font-mono text-[9px] uppercase tracking-widest" style={{ color: muted }}>
+            {note}
+          </span>
+        )}
+      </dd>
     </div>
   );
 }

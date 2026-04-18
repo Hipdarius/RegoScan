@@ -42,8 +42,19 @@ html.light {
 html, body {
   background-color: var(--bg-body);
   color: var(--text-primary);
-  font-feature-settings: "ss01", "cv11";
+  /* Default everything to the technical mono — the whole console reads as
+     one instrument document. Prose paragraphs inherit this too; they are
+     short enough that running mono is legible, not fatiguing. */
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-feature-settings: "kern", "calt";
   transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Tabular alignment for numeric columns that must not dance as values change.
+   Apply via Tailwind's `tabular-nums` utility (already used in telemetry rows
+   and the scan history) or this helper. */
+.tnum {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Deep-space backdrop — dark mode only
@@ -163,26 +174,21 @@ html, body {
 ::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
 
 @layer components {
+  /* Panels are bounded by 1px borders, not shadows or rounding.
+     See web/UI_STANDARDS.md — "aerospace / ESA mission control" aesthetic. */
   .panel {
     background: var(--bg-panel);
     border: 1px solid var(--border-panel);
-    border-radius: 0.75rem;
-    backdrop-filter: blur(8px);
+    border-radius: 0;
     transition: background 0.3s ease, border-color 0.3s ease;
-  }
-  .light .panel {
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-  }
-  .dark .panel {
-    box-shadow: 0 0 24px rgba(56, 189, 248, 0.08);
   }
 
   .panel-header {
-    @apply flex items-center gap-2 px-4 py-3 text-xs font-mono uppercase tracking-widest;
+    @apply flex items-center gap-2 px-4 py-2.5 text-[11px] font-mono uppercase tracking-widest;
     border-bottom: 1px solid var(--border-header);
     transition: border-color 0.3s ease;
   }
-  .dark .panel-header { color: rgba(56, 189, 248, 0.8); }
+  .dark .panel-header { color: rgba(56, 189, 248, 0.85); }
   .light .panel-header { color: #0369a1; }
 
   .panel-body {

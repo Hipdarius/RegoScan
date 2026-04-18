@@ -25,10 +25,7 @@ export function MissionPanel({
       <div className="panel-header">
         <span
           className="inline-block h-1.5 w-1.5 rounded-full"
-          style={{
-            backgroundColor: isLight ? "#0284c7" : "#38bdf8",
-            boxShadow: isLight ? "none" : "0 0 24px rgba(56, 189, 248, 0.35)",
-          }}
+          style={{ backgroundColor: isLight ? "#0284c7" : "#38bdf8" }}
         />
         {title}
       </div>

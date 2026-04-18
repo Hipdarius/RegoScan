@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 
 import { Hero } from "@/components/Hero";
@@ -34,11 +34,9 @@ export default function Home() {
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Scan history (max 10)
   const [scanHistory, setScanHistory] = useState<DemoResponse[]>([]);
   const [selectedHistoryIdx, setSelectedHistoryIdx] = useState(0);
 
-  // Fetch meta + endmembers on mount
   useEffect(() => {
     setMetaLoading(true);
     Promise.all([
@@ -54,10 +52,7 @@ export default function Home() {
 
   const pushScan = useCallback((result: DemoResponse) => {
     setScan(result);
-    setScanHistory((prev) => {
-      const next = [result, ...prev].slice(0, 10);
-      return next;
-    });
+    setScanHistory((prev) => [result, ...prev].slice(0, 10));
     setSelectedHistoryIdx(0);
   }, []);
 
@@ -81,7 +76,6 @@ export default function Home() {
     }
   }, [pushScan]);
 
-  // Handle upload result (PredictionResponse → DemoResponse shape)
   const handleUploadResult = useCallback(
     (result: DemoResponse) => {
       pushScan(result);
@@ -89,7 +83,6 @@ export default function Home() {
     [pushScan]
   );
 
-  // Select a historical scan
   const handleHistorySelect = useCallback(
     (idx: number) => {
       setSelectedHistoryIdx(idx);
@@ -99,11 +92,16 @@ export default function Home() {
   );
 
   const cyanText = isLight ? "#0284c7" : "#38bdf8";
-  const amberText = isLight ? "#f59e0b" : "#f59e0b";
-  const mutedText = isLight ? "#94a3b8" : "#64748b";
-  const borderColor = isLight ? "rgba(15, 23, 42, 0.12)" : "rgba(56, 189, 248, 0.15)";
-  const panelBg = isLight ? "rgba(255,255,255,0.85)" : "rgba(15, 23, 42, 0.7)";
-  const telemetryBorder = isLight ? "#e2e8f0" : "#1e293b";
+  const amberText = "#f59e0b";
+  const mutedText = isLight ? "#64748b" : "#94a3b8";
+  const dimText = isLight ? "#94a3b8" : "#64748b";
+  const borderColor = isLight ? "#e2e8f0" : "#1e293b";
+  const telemetryBorder = borderColor;
+  const warnBg = isLight ? "rgba(245, 158, 11, 0.06)" : "rgba(245, 158, 11, 0.08)";
+  const warnBorder = "rgba(245, 158, 11, 0.35)";
+  const sensorLabel = meta
+    ? `Synthetic acquisition · ${meta.n_features_total} ch · ${meta.sensor_mode ?? "full"} mode`
+    : "Synthetic acquisition · awaiting meta…";
 
   return (
     <main className="relative min-h-screen pb-24">
@@ -113,164 +111,231 @@ export default function Home() {
         metaLoading={metaLoading}
       />
 
-      <div className="mx-auto mt-10 flex max-w-6xl flex-col gap-6 px-6">
-        {/* Model offline warning */}
+      <div className="mx-auto mt-10 flex max-w-6xl flex-col gap-10 px-6">
+        {/* Alerts sit above the section rhythm so they never compete with it */}
         {!metaLoading && meta && !meta.model_loaded && (
           <div
-            className="rounded-lg border px-4 py-3 font-mono text-xs"
-            style={{
-              borderColor: isLight ? "rgba(217,119,6,0.3)" : "rgba(251,191,36,0.3)",
-              background: isLight ? "rgba(217,119,6,0.08)" : "rgba(251,191,36,0.1)",
-              color: amberText,
-            }}
+            className="border px-4 py-3 font-mono text-[11px] uppercase tracking-widest"
+            style={{ borderColor: warnBorder, background: warnBg, color: amberText }}
+            role="status"
           >
-            MODEL OFFLINE — ONNX model not loaded. Check the backend server.
+            Model offline · ONNX not loaded · check backend server
           </div>
         )}
-
-        {/* Action bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex flex-wrap items-center justify-between gap-4 rounded-xl px-5 py-4 backdrop-blur-sm"
-          style={{
-            border: `1px solid ${borderColor}`,
-            background: panelBg,
-            boxShadow: isLight
-              ? "0 1px 3px rgba(0,0,0,0.06)"
-              : "0 0 24px rgba(34, 211, 238, 0.08)",
-          }}
-        >
-          <div className="flex flex-col gap-1">
-            <span
-              className="font-mono text-[10px] uppercase tracking-widest"
-              style={{ color: mutedText }}
-            >
-              Probe operation
-            </span>
-            <span
-              className="font-mono text-sm"
-              style={{ color: isLight ? "#0f172a" : "#e2e8f0" }}
-            >
-              Synthetic acquisition · 288 ch · 340–850 nm
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <UploadPanel onResult={handleUploadResult} />
-            <ScanButton
-              onClick={runScan}
-              isScanning={isScanning}
-              disabled={!meta?.model_loaded}
-            />
-          </div>
-        </motion.div>
-
         {error && (
           <div
-            className="rounded-lg border px-4 py-3 font-mono text-xs"
-            style={{
-              borderColor: isLight ? "rgba(217,119,6,0.3)" : "rgba(251,191,36,0.3)",
-              background: isLight ? "rgba(217,119,6,0.08)" : "rgba(251,191,36,0.1)",
-              color: amberText,
-            }}
+            className="border px-4 py-3 font-mono text-[11px]"
+            style={{ borderColor: warnBorder, background: warnBg, color: amberText }}
+            role="alert"
           >
             {error}
           </div>
         )}
 
-        {/* Top row: spectrum + ilmenite */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <MissionPanel title="VIS/NIR Spectrum">
-              <SpectrumChart
-                wavelengths={meta?.wavelengths_nm ?? null}
-                spectrum={scan?.spec ?? null}
-                endmembers={endmembers}
-                as7265x={scan?.as7265x}
-                as7265xBands={meta?.as7265x_bands_nm}
-              />
-              <div
-                className="mt-3 flex flex-wrap gap-4 font-mono text-[10px] uppercase tracking-widest"
-                style={{ color: mutedText }}
-              >
-                <span>340 nm – 850 nm</span>
-                <span>·</span>
-                <span>Hamamatsu C12880MA emulation</span>
-                {scan && (
-                  <>
-                    <span>·</span>
-                    <span style={{ color: cyanText }}>
-                      LIF 450lp = {scan.lif_450lp.toFixed(3)}
-                    </span>
-                  </>
-                )}
-              </div>
-            </MissionPanel>
+        {/* ── 01 Acquisition ─────────────────────────────────────────── */}
+        <motion.section
+          className="flex flex-col gap-5"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <SectionHeader
+            index="01"
+            title="Acquisition"
+            cyanText={cyanText}
+            mutedText={mutedText}
+            dimText={dimText}
+            borderColor={borderColor}
+            actions={
+              <>
+                <UploadPanel onResult={handleUploadResult} />
+                <ScanButton
+                  onClick={runScan}
+                  isScanning={isScanning}
+                  disabled={!meta?.model_loaded}
+                />
+              </>
+            }
+          />
+          <div
+            className="font-mono text-[11px] uppercase tracking-widest"
+            style={{ color: mutedText }}
+          >
+            {sensorLabel}
           </div>
 
-          <MissionPanel title="Ilmenite Regression" delay={0.05}>
-            <IlmeniteGauge
-              fraction={scan?.ilmenite_fraction ?? null}
-              trueFraction={scan?.true_ilmenite_fraction ?? null}
-            />
-          </MissionPanel>
-        </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <MissionPanel title="VIS/NIR Spectrum">
+                <SpectrumChart
+                  wavelengths={meta?.wavelengths_nm ?? null}
+                  spectrum={scan?.spec ?? null}
+                  endmembers={endmembers}
+                  as7265x={scan?.as7265x}
+                  as7265xBands={meta?.as7265x_bands_nm}
+                />
+                <div
+                  className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] uppercase tracking-widest"
+                  style={{ color: dimText }}
+                >
+                  <span>340–850 nm · 288 ch</span>
+                  <span>·</span>
+                  <span>Hamamatsu C12880MA (emulated)</span>
+                  {scan && (
+                    <>
+                      <span>·</span>
+                      <span style={{ color: cyanText }}>
+                        LIF 450 LP = {scan.lif_450lp.toFixed(3)}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </MissionPanel>
+            </div>
 
-        {/* Bottom row */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          <MissionPanel title="Mineral Class Posterior" delay={0.1}>
-            <ProbabilityBars
-              probabilities={scan?.probabilities ?? null}
-              predictedClass={scan?.predicted_class ?? null}
-            />
-          </MissionPanel>
-
-          <MissionPanel title="Mission Telemetry" delay={0.15}>
-            <dl className="space-y-4">
-              <Telemetry label="Predicted class" value={scan ? CLASS_LABELS[scan.predicted_class] ?? scan.predicted_class : "\u2014"} color={cyanText} borderColor={telemetryBorder} labelColor={mutedText} />
-              <Telemetry label="Confidence" value={scan ? `${(scan.confidence * 100).toFixed(1)}%` : "\u2014"} color={cyanText} borderColor={telemetryBorder} labelColor={mutedText} />
-              <Telemetry label="Ground truth" value={scan ? CLASS_LABELS[scan.true_class] ?? scan.true_class : "\u2014"} color={amberText} borderColor={telemetryBorder} labelColor={mutedText} />
-              <Telemetry
-                label="Match"
-                value={scan ? (scan.predicted_class === scan.true_class ? "NOMINAL" : "DEVIATION") : "\u2014"}
-                color={scan ? (scan.predicted_class === scan.true_class ? cyanText : amberText) : cyanText}
-                borderColor={telemetryBorder}
-                labelColor={mutedText}
+            <MissionPanel title="Ilmenite Regression" delay={0.05}>
+              <IlmeniteGauge
+                fraction={scan?.ilmenite_fraction ?? null}
+                trueFraction={scan?.true_ilmenite_fraction ?? null}
               />
-            </dl>
-          </MissionPanel>
+            </MissionPanel>
+          </div>
+        </motion.section>
 
-          <MissionPanel title="Model Provenance" delay={0.2}>
-            <dl className="space-y-4">
-              <Telemetry label="Model" value={scan?.model_version ?? "vera-resnet"} color={cyanText} borderColor={telemetryBorder} labelColor={mutedText} />
-              <Telemetry label="Schema" value={meta?.schema_version ?? "\u2014"} color={cyanText} borderColor={telemetryBorder} labelColor={mutedText} />
-              <Telemetry label="ONNX SHA-256" value={meta?.model_sha256 ?? "\u2014"} color={cyanText} borderColor={telemetryBorder} labelColor={mutedText} mono />
-              <Telemetry label="Features" value={meta ? `${meta.n_features_total}` : "\u2014"} color={cyanText} borderColor={telemetryBorder} labelColor={mutedText} />
-            </dl>
-          </MissionPanel>
-        </div>
+        {/* ── 02 Inference ───────────────────────────────────────────── */}
+        <motion.section
+          className="flex flex-col gap-5"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
+        >
+          <SectionHeader
+            index="02"
+            title="Inference"
+            cyanText={cyanText}
+            mutedText={mutedText}
+            dimText={dimText}
+            borderColor={borderColor}
+          />
 
-        {/* Scan history */}
-        {scanHistory.length > 0 && (
-          <MissionPanel title="Scan History" delay={0.25}>
-            <ScanHistory
-              history={scanHistory}
-              selectedIndex={selectedHistoryIdx}
-              onSelect={handleHistorySelect}
-            />
-          </MissionPanel>
-        )}
+          {/* Asymmetric 2/1: primary output (posterior) gets the space it
+              deserves; provenance + telemetry stack in the narrow right column. */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <MissionPanel title="Mineral Class Posterior">
+                <ProbabilityBars
+                  probabilities={scan?.probabilities ?? null}
+                  predictedClass={scan?.predicted_class ?? null}
+                />
+              </MissionPanel>
+            </div>
+
+            <div className="flex flex-col gap-6">
+              <MissionPanel title="Mission Telemetry" delay={0.05}>
+                <dl className="space-y-3">
+                  <Telemetry label="Predicted class" value={scan ? CLASS_LABELS[scan.predicted_class] ?? scan.predicted_class : "—"} color={cyanText} borderColor={telemetryBorder} labelColor={dimText} />
+                  <Telemetry label="Confidence" value={scan ? `${(scan.confidence * 100).toFixed(1)}%` : "—"} color={cyanText} borderColor={telemetryBorder} labelColor={dimText} />
+                  <Telemetry label="Ground truth" value={scan ? CLASS_LABELS[scan.true_class] ?? scan.true_class : "—"} color={amberText} borderColor={telemetryBorder} labelColor={dimText} />
+                  <Telemetry
+                    label="Match"
+                    value={scan ? (scan.predicted_class === scan.true_class ? "NOMINAL" : "DEVIATION") : "—"}
+                    color={scan ? (scan.predicted_class === scan.true_class ? cyanText : amberText) : cyanText}
+                    borderColor={telemetryBorder}
+                    labelColor={dimText}
+                  />
+                </dl>
+              </MissionPanel>
+
+              <MissionPanel title="Model Provenance" delay={0.1}>
+                <dl className="space-y-3">
+                  <Telemetry label="Model" value={scan?.model_version ?? "vera-resnet"} color={cyanText} borderColor={telemetryBorder} labelColor={dimText} />
+                  <Telemetry label="Schema" value={meta?.schema_version ?? "—"} color={cyanText} borderColor={telemetryBorder} labelColor={dimText} />
+                  <Telemetry label="ONNX SHA-256" value={meta?.model_sha256 ?? "—"} color={cyanText} borderColor={telemetryBorder} labelColor={dimText} mono truncate />
+                  <Telemetry label="Features" value={meta ? `${meta.n_features_total}` : "—"} color={cyanText} borderColor={telemetryBorder} labelColor={dimText} />
+                </dl>
+              </MissionPanel>
+            </div>
+          </div>
+        </motion.section>
+
+        {/* ── 03 Log ─────────────────────────────────────────────────── */}
+        <motion.section
+          className="flex flex-col gap-5"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <SectionHeader
+            index="03"
+            title="Log"
+            cyanText={cyanText}
+            mutedText={mutedText}
+            dimText={dimText}
+            borderColor={borderColor}
+          />
+          <div className="panel">
+            <div className="panel-body">
+              {scanHistory.length === 0 ? (
+                <div
+                  className="flex h-16 items-center justify-center font-mono text-[11px] uppercase tracking-widest"
+                  style={{ color: dimText }}
+                >
+                  buffer empty · awaiting first scan
+                </div>
+              ) : (
+                <ScanHistory
+                  history={scanHistory}
+                  selectedIndex={selectedHistoryIdx}
+                  onSelect={handleHistorySelect}
+                />
+              )}
+            </div>
+          </div>
+        </motion.section>
 
         <footer
-          className="mt-6 flex flex-col items-center gap-1 text-center font-mono text-[10px] uppercase tracking-widest"
-          style={{ color: mutedText }}
+          className="mt-4 flex flex-col gap-1 border-t pt-4 font-mono text-[10px] uppercase tracking-widest sm:flex-row sm:items-center sm:justify-between"
+          style={{ color: dimText, borderColor: telemetryBorder }}
         >
-          <span>VERA · 1D ResNet · ONNXRuntime · FastAPI</span>
-          <span>Inference at the edge — same model that fits the embedded probe.</span>
+          <span>VERA · 1D ResNet · onnxruntime · FastAPI</span>
+          <span>Same ONNX artifact targets the ESP32-S3 probe via TFLite INT8</span>
         </footer>
       </div>
     </main>
+  );
+}
+
+function SectionHeader({
+  index,
+  title,
+  actions,
+  cyanText,
+  mutedText,
+  dimText,
+  borderColor,
+}: {
+  index: string;
+  title: string;
+  actions?: React.ReactNode;
+  cyanText: string;
+  mutedText: string;
+  dimText: string;
+  borderColor: string;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+      <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.32em]">
+        <span style={{ color: cyanText }}>{"//"}</span>
+        <span style={{ color: dimText }}>{index}</span>
+        <span style={{ color: mutedText }}>{title}</span>
+      </div>
+      <span
+        className="h-px min-w-[2rem] flex-1"
+        style={{ backgroundColor: borderColor }}
+        aria-hidden="true"
+      />
+      {actions && <div className="flex items-center gap-3">{actions}</div>}
+    </div>
   );
 }
 
@@ -281,6 +346,7 @@ function Telemetry({
   borderColor,
   labelColor,
   mono = false,
+  truncate = false,
 }: {
   label: string;
   value: string;
@@ -288,6 +354,7 @@ function Telemetry({
   borderColor: string;
   labelColor: string;
   mono?: boolean;
+  truncate?: boolean;
 }) {
   return (
     <div
@@ -300,7 +367,11 @@ function Telemetry({
       >
         {label}
       </dt>
-      <dd className={`font-mono ${mono ? "text-[11px]" : "text-sm"}`} style={{ color }}>
+      <dd
+        className={`font-mono ${mono ? "text-[11px]" : "text-sm"} ${truncate ? "max-w-[8rem] truncate" : ""}`}
+        style={{ color }}
+        title={truncate ? value : undefined}
+      >
         {value}
       </dd>
     </div>

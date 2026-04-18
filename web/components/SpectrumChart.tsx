@@ -54,7 +54,7 @@ export function SpectrumChart({
         className="flex h-72 items-center justify-center font-mono text-xs uppercase tracking-widest"
         style={{ color: isLight ? "#94a3b8" : "#64748b" }}
       >
-        awaiting acquisition\u2026
+        awaiting acquisition…
       </div>
     );
   }
@@ -111,28 +111,22 @@ export function SpectrumChart({
   const tickFill = isLight ? "#64748b" : "#94a3b8";
   const labelFill = isLight ? "#94a3b8" : "#64748b";
   const tooltipBg = isLight ? "#ffffff" : "#0f172a";
-  const tooltipBorder = isLight ? "1px solid #e2e8f0" : "1px solid #38bdf844";
+  const tooltipBorder = isLight ? "1px solid #e2e8f0" : "1px solid #1e293b";
   const tooltipColor = isLight ? "#0f172a" : "#e2e8f0";
 
-  const as7Color = isLight ? "#d97706" : "#f59e0b";
+  const specColor = isLight ? "#0284c7" : "#38bdf8";
+  const as7Color = "#f59e0b";
 
   return (
     <div>
       <div className="h-72 w-full">
         <ResponsiveContainer>
           <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-            <defs>
-              <linearGradient id="specGrad" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor={isLight ? "#0284c7" : "#38bdf8"} stopOpacity={0.9} />
-                <stop offset="60%" stopColor={isLight ? "#0284c7" : "#38bdf8"} stopOpacity={0.9} />
-                <stop offset="100%" stopColor={isLight ? "#d97706" : "#fbbf24"} stopOpacity={0.9} />
-              </linearGradient>
-            </defs>
             <CartesianGrid stroke={gridColor} strokeDasharray="3 6" />
             <XAxis
               dataKey="nm"
               stroke={axisStroke}
-              tick={{ fill: tickFill, fontSize: 10, fontFamily: "ui-monospace" }}
+              tick={{ fill: tickFill, fontSize: 10, fontFamily: "var(--font-mono), ui-monospace, monospace" }}
               label={{
                 value: "wavelength (nm)",
                 position: "insideBottom",
@@ -145,7 +139,7 @@ export function SpectrumChart({
             />
             <YAxis
               stroke={axisStroke}
-              tick={{ fill: tickFill, fontSize: 10, fontFamily: "ui-monospace" }}
+              tick={{ fill: tickFill, fontSize: 10, fontFamily: "var(--font-mono), ui-monospace, monospace" }}
               domain={[0, "dataMax + 0.1"]}
               tickFormatter={(v) => v.toFixed(2)}
             />
@@ -153,11 +147,13 @@ export function SpectrumChart({
               contentStyle={{
                 background: tooltipBg,
                 border: tooltipBorder,
-                borderRadius: 8,
-                fontFamily: "ui-monospace",
+                borderRadius: 0,
+                fontFamily: "var(--font-mono), ui-monospace, monospace",
                 fontSize: 11,
                 color: tooltipColor,
+                padding: "6px 10px",
               }}
+              cursor={{ stroke: axisStroke, strokeWidth: 1, strokeDasharray: "2 4" }}
               formatter={(v: number, name: string) => [
                 v.toFixed(4),
                 name === "as7265x" ? "AS7265X" : name,
@@ -183,11 +179,11 @@ export function SpectrumChart({
             <Line
               type="monotone"
               dataKey="reflectance"
-              stroke={as7Only ? as7Color : "url(#specGrad)"}
-              strokeWidth={2}
-              dot={as7Only ? { r: 4, fill: as7Color, stroke: as7Color } : false}
+              stroke={as7Only ? as7Color : specColor}
+              strokeWidth={1.5}
+              dot={as7Only ? { r: 3, fill: as7Color, stroke: as7Color } : false}
               isAnimationActive
-              animationDuration={650}
+              animationDuration={550}
             />
             {/* AS7265x scatter overlay (when both spec and AS7265x are present) */}
             {hasAs7 && !as7Only && (
@@ -195,11 +191,11 @@ export function SpectrumChart({
                 data={as7Data}
                 dataKey="as7265x"
                 fill={as7Color}
-                stroke={isLight ? "#92400e" : "#fbbf24"}
-                strokeWidth={1}
-                r={4}
+                stroke={as7Color}
+                strokeWidth={0}
+                r={3}
                 isAnimationActive
-                animationDuration={650}
+                animationDuration={550}
                 name="AS7265X"
               />
             )}
