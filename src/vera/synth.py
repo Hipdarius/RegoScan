@@ -332,7 +332,136 @@ def _perturb_endmembers(
 
 
 def mixture_spectrum(fractions: np.ndarray, endmembers: Endmembers) -> np.ndarray:
+    """Linear mixture of pure endmember spectra by mass fraction.
+
+    Valid for **macroscopic** (areal) mixing — e.g. a checkerboard of
+    mineral grains illuminated as separate scenes. For intimate mixing
+    (intra-grain or fine powder), use :func:`mixture_spectrum_hapke`
+    instead.
+    """
     return fractions @ endmembers.spectra
+
+
+# ---------------------------------------------------------------------------
+# Hapke nonlinear mixing (intimate mixtures)
+# ---------------------------------------------------------------------------
+#
+# Linear mixing assumes each photon interacts with exactly one mineral grain.
+# That holds for *areal* mixtures (a mosaic) but breaks for *intimate*
+# mixtures, where a photon scatters off multiple grains before exiting.
+#
+# Hapke's bidirectional reflectance theory (Hapke 1981, 1993) operates on
+# single-scattering albedo ``w`` instead of reflectance ``R``. For an
+# intimate mixture you average single-scattering albedos linearly, then
+# convert back to reflectance.
+#
+# The closed-form simplification of the IMSA (isotropic multiple
+# scattering, hemispherical reflectance at normal incidence) gives
+#
+#     R(w) = w / (1 + sqrt(1 - w))^2
+#
+# Inverting:
+#
+#     w(R) = 1 - ((1 - R) / (1 + R))^2
+#
+# Algorithm:
+#     1. R_i  -> w_i   (per mineral, per channel)
+#     2. w_mix = sum_i (f_i * w_i)
+#     3. R_mix = w_mix / (1 + sqrt(1 - w_mix))^2
+#
+# This is the simplest physically grounded nonlinear mixing model. For
+# bench-scale fine regolith analogues it's a much better approximation
+# than linear mixing, especially when one mineral is very dark (ilmenite)
+# and another is very bright (anorthite).
+#
+# References:
+#   Hapke (1981) "Bidirectional reflectance spectroscopy. 1. Theory",
+#       J. Geophys. Res. 86, 3039-3054.
+#   Mustard & Pieters (1989) "Photometric phase functions of common
+#       geologic minerals and applications to quantitative analysis",
+#       J. Geophys. Res. 94, 13619-13634.
+
+
+def reflectance_to_ssa(R: np.ndarray) -> np.ndarray:
+    """Closed-form reflectance → single-scattering albedo (IMSA approximation).
+
+    R must be in ``[0, 1]``. Values >= 1 are clipped to (1 - 1e-9) to keep
+    the formula numerically stable.
+    """
+    R_clip = np.clip(np.asarray(R, dtype=np.float64), 0.0, 1.0 - 1e-9)
+    s = (1.0 - R_clip) / (1.0 + R_clip)
+    return 1.0 - s * s
+
+
+def ssa_to_reflectance(w: np.ndarray) -> np.ndarray:
+    """Closed-form single-scattering albedo → reflectance (IMSA approximation)."""
+    w_clip = np.clip(np.asarray(w, dtype=np.float64), 0.0, 1.0 - 1e-9)
+    return w_clip / (1.0 + np.sqrt(1.0 - w_clip)) ** 2
+
+
+def mixture_spectrum_hapke(
+    fractions: np.ndarray,
+    endmember_spectra: np.ndarray,
+) -> np.ndarray:
+    """Hapke intimate-mixture reflectance from pure endmember spectra.
+
+    Parameters
+    ----------
+    fractions
+        Mass-fraction vector summing to 1. Shape: ``(N_endmembers,)``.
+    endmember_spectra
+        Pure mineral reflectance curves. Shape: ``(N_endmembers, N_channels)``.
+        Values must lie in ``[0, 1]``.
+
+    Returns
+    -------
+    Mixed reflectance, shape ``(N_channels,)``.
+
+    Notes
+    -----
+    Assumes equal grain size across endmembers. For grain-size-aware
+    Hapke, the SSA average becomes ``(M_i / (rho_i * D_i))``-weighted —
+    we don't model that here because the synthesizer doesn't carry
+    per-mineral density.
+    """
+    fractions = np.asarray(fractions, dtype=np.float64).ravel()
+    spectra = np.asarray(endmember_spectra, dtype=np.float64)
+    if spectra.ndim != 2 or spectra.shape[0] != fractions.shape[0]:
+        raise ValueError(
+            f"endmember_spectra shape {spectra.shape} doesn't match "
+            f"fractions length {fractions.shape[0]}"
+        )
+    # Step 1: per-mineral, per-channel single-scattering albedo
+    ssa = reflectance_to_ssa(spectra)            # (N_em, N_ch)
+    # Step 2: linearly mix SSAs
+    ssa_mix = fractions @ ssa                    # (N_ch,)
+    # Step 3: back to reflectance
+    return ssa_to_reflectance(ssa_mix)
+
+
+def mix_spectra(
+    fractions: np.ndarray,
+    endmember_spectra: np.ndarray,
+    *,
+    model: str = "linear",
+) -> np.ndarray:
+    """Dispatch wrapper: linear or Hapke intimate mixing.
+
+    Parameters
+    ----------
+    fractions, endmember_spectra
+        See :func:`mixture_spectrum_hapke`.
+    model
+        ``"linear"`` (default, fast, areal mixing) or
+        ``"hapke"`` (nonlinear, intimate mixing).
+    """
+    if model == "linear":
+        return np.asarray(fractions, dtype=np.float64) @ np.asarray(
+            endmember_spectra, dtype=np.float64
+        )
+    if model == "hapke":
+        return mixture_spectrum_hapke(fractions, endmember_spectra)
+    raise ValueError(f"unknown mixing model: {model!r}")
 
 
 def synth_measurement(
@@ -349,6 +478,7 @@ def synth_measurement(
     timestamp: str | None = None,
     degradation_mask: np.ndarray | None = None,
     sensor_mode: str = "combined",
+    mixing_model: str = "linear",
 ) -> Measurement:
     """Builds one fake measurement.
 
@@ -360,6 +490,13 @@ def synth_measurement(
         spectrum (``spec``) is always populated (the Measurement model
         requires it). ``sensor_mode`` is stored on the output so
         downstream code knows which channels to use for ML features.
+    mixing_model : str
+        ``"linear"`` (default) — areal mixing. Each photon hits one
+        grain. Fast, valid for macroscopic mixtures or coarse grains.
+        ``"hapke"`` — nonlinear intimate mixing. Each photon scatters
+        off multiple grains. Required for fine regolith powder where a
+        small fraction of dark mineral (ilmenite) suppresses the bright
+        mineral signal disproportionately.
     """
     if sensor_mode not in SENSOR_MODES:
         raise ValueError(
@@ -377,11 +514,13 @@ def synth_measurement(
         timestamp = datetime.now(timezone.utc).isoformat()
 
     # Pipeline: perturb endmember spectra to simulate natural
-    # mineralogical variation, then mix with the target fractions
+    # mineralogical variation, then mix with the target fractions.
+    # The mixing model controls whether linear (areal) or Hapke
+    # (intimate) mixing is used; see module docstring for details.
     perturbed = _perturb_endmembers(endmembers, rng)
     perturbed_swir = _perturb_endmembers_swir(endmembers.swir, rng)
-    base = fractions @ perturbed
-    base_swir = fractions @ perturbed_swir
+    base = mix_spectra(fractions, perturbed, model=mixing_model)
+    base_swir = mix_spectra(fractions, perturbed_swir, model=mixing_model)
 
     # Noise model
     gain = 1.0 + rng.normal(0.0, noise.gain_sigma, size=N_SPEC)
@@ -466,6 +605,7 @@ def synth_sample(
     rng: np.random.Generator,
     noise: NoiseConfig | None = None,
     sensor_mode: str = "combined",
+    mixing_model: str = "linear",
 ) -> list[Measurement]:
     """Generate ``n_measurements`` measurements for one (sample, class) pair.
 
@@ -490,6 +630,7 @@ def synth_sample(
                 noise=cfg,
                 degradation_mask=degradation_mask,
                 sensor_mode=sensor_mode,
+                mixing_model=mixing_model,
             )
         )
     return out
@@ -504,10 +645,17 @@ def synth_dataset(
     classes: Iterable[str] = MINERAL_CLASSES,
     noise: NoiseConfig | None = None,
     sensor_mode: str = "combined",
+    mixing_model: str = "linear",
 ) -> list[Measurement]:
     """Generate a complete synthetic dataset.
 
     Classes are dealt round-robin so the dataset is approximately balanced.
+
+    Parameters
+    ----------
+    mixing_model : str
+        ``"linear"`` (default) or ``"hapke"``. See
+        :func:`synth_measurement` for details.
     """
     rng = np.random.default_rng(seed)
     classes = tuple(classes)
@@ -524,6 +672,7 @@ def synth_dataset(
                 rng=rng,
                 noise=noise,
                 sensor_mode=sensor_mode,
+                mixing_model=mixing_model,
             )
         )
     return out
@@ -537,7 +686,11 @@ __all__ = [
     "NoiseConfig",
     "load_endmembers",
     "fractions_for_class",
+    "mix_spectra",
     "mixture_spectrum",
+    "mixture_spectrum_hapke",
+    "reflectance_to_ssa",
+    "ssa_to_reflectance",
     "_as7265x_response",
     "synth_measurement",
     "synth_sample",
