@@ -37,6 +37,15 @@ public:
 
     /// Disarm the laser immediately.
     void laserOff();
+
+    /// Enable the dedicated 1050 nm NIR LED for SWIR channel 2.
+    /// This LED is wired to PIN_LED_1050 (separate from the 12-band
+    /// narrowband array) because the InGaAs photodiode requires a
+    /// distinct emitter beyond the C12880MA cutoff.
+    void led1050On();
+
+    /// Disable the 1050 nm NIR LED.
+    void led1050Off();
 };
 
 }  // namespace vera

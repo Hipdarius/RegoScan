@@ -256,22 +256,113 @@ void loop() {
     }
 
     // ── SWIR: InGaAs photodiode via ADS1115 ─────────────────────
-    // Reads reflectance at 940 nm (existing LED) and 1050 nm (new LED)
-    // through the InGaAs photodiode + transimpedance amplifier.
-    // The ADS1115 provides 16-bit precision vs the ESP32's noisy 12-bit.
+    // Reads reflectance at 940 nm (LED index 11) and 1050 nm (dedicated
+    // PIN_LED_1050) through the Hamamatsu G12180-010A InGaAs photodiode +
+    // OPA380 transimpedance amplifier. The ADS1115 provides 16-bit
+    // precision vs the ESP32's noisy 12-bit ADC — essential for the
+    // nanoamp-level photocurrents from the InGaAs detector.
+    //
+    // Sub-state machine (non-blocking, runs across multiple loop ticks):
+    //   step 0: all LEDs off  → accumulate N_AVERAGES dark reads
+    //   step 1: 940 nm LED on → settle → accumulate N_AVERAGES reads
+    //   step 2: 1050 nm LED on → settle → accumulate N_AVERAGES reads
+    //
+    // Final values are stored as raw normalized [0, 1] reflectance with
+    // dark subtraction. The ML pipeline expects values in this range.
+    // If the ADS1115 doesn't ACK on I²C, the state flags SWIR absent and
+    // the bridge / API treat the frame as full mode (no SWIR).
     case State::SWIR: {
-        // TODO: replace with real ADS1115 I2C reads once hardware is wired
-        // For now, flag as absent — the pipeline handles this gracefully.
-        g_swir_present = false;
-        for (uint8_t k = 0; k < N_SWIR_CHANNELS; k++) {
-            g_swir_data[k] = 0.0f;
+        static uint8_t  swir_step           = 0;
+        static uint32_t swir_acc            = 0;
+        static uint16_t swir_dark_avg       = 0;
+        static uint32_t swir_step_enter_ms  = 0;
+        static bool     swir_initialized    = false;
+
+        // First tick: hardware probe + reset sub-state
+        if (!swir_initialized) {
+            if (!g_ads1115.isConnected()) {
+                // No ADS1115 — flag absent and skip cleanly
+                g_swir_present = false;
+                for (uint8_t k = 0; k < N_SWIR_CHANNELS; k++) {
+                    g_swir_data[k] = 0.0f;
+                }
+                swir_initialized = false;  // reset for next scan
+                enterState(State::LIF);
+                break;
+            }
+            swir_step          = 0;
+            swir_acc           = 0;
+            swir_dark_avg      = 0;
+            g_avg_idx          = 0;
+            g_light.allOff();
+            g_light.led1050Off();
+            swir_step_enter_ms = millis();
+            swir_initialized   = true;
+            break;
         }
-        // When ADS1115 is connected, the sequence would be:
-        //   1. All LEDs off → read photodiode (dark SWIR)
-        //   2. 940 nm LED on → read photodiode → swir[0]
-        //   3. 1050 nm LED on → read photodiode → swir[1]
-        //   4. Normalize: swir[k] = (raw - dark) / 65535.0
-        enterState(State::LIF);
+
+        // Wait for LED settling before each step's accumulation
+        if (millis() - swir_step_enter_ms < LED_SETTLE_MS) {
+            break;
+        }
+
+        // Accumulate one ADS1115 reading. Negative values (PGA noise on
+        // dark) clamp to 0 since reflectance can't be negative.
+        int16_t raw = g_ads1115.readRaw();
+        if (raw < 0) raw = 0;
+        swir_acc += static_cast<uint32_t>(raw);
+        g_avg_idx++;
+
+        if (g_avg_idx < N_AVERAGES) {
+            break;  // keep accumulating in this step
+        }
+
+        // Step complete — compute average and advance sub-state
+        uint16_t step_avg = static_cast<uint16_t>(swir_acc / N_AVERAGES);
+
+        if (swir_step == 0) {
+            // Dark frame captured. Switch on 940 nm LED (index 11).
+            swir_dark_avg      = step_avg;
+            swir_step          = 1;
+            g_light.selectLed(11);  // LED_WAVELENGTHS_NM[11] == 940
+            swir_acc           = 0;
+            g_avg_idx          = 0;
+            swir_step_enter_ms = millis();
+        } else if (swir_step == 1) {
+            // 940 nm reflectance: (bright - dark) / fullscale.
+            // ADS1115 single-ended max code is 32767 (0x7FFF), but we
+            // normalize against 65535.0f to align with the synth.py
+            // 16-bit ADC quantization model that uses the unsigned range.
+            float dark   = static_cast<float>(swir_dark_avg) / 65535.0f;
+            float bright = static_cast<float>(step_avg)      / 65535.0f;
+            float refl   = bright - dark;
+            if (refl < 0.0f) refl = 0.0f;
+            if (refl > 1.5f) refl = 1.5f;
+            g_swir_data[0]     = refl;
+            // Switch to 1050 nm: turn off all narrowband LEDs, enable
+            // the dedicated SWIR emitter.
+            swir_step          = 2;
+            g_light.allOff();
+            g_light.led1050On();
+            swir_acc           = 0;
+            g_avg_idx          = 0;
+            swir_step_enter_ms = millis();
+        } else {
+            // 1050 nm reflectance — final step
+            float dark   = static_cast<float>(swir_dark_avg) / 65535.0f;
+            float bright = static_cast<float>(step_avg)      / 65535.0f;
+            float refl   = bright - dark;
+            if (refl < 0.0f) refl = 0.0f;
+            if (refl > 1.5f) refl = 1.5f;
+            g_swir_data[1]   = refl;
+
+            // Cleanup: all illumination off, mark SWIR present
+            g_light.led1050Off();
+            g_light.allOff();
+            g_swir_present   = true;
+            swir_initialized = false;  // reset for next scan
+            enterState(State::LIF);
+        }
         break;
     }
 

@@ -17,6 +17,8 @@ void Illumination::init() {
     }
     pinMode(PIN_LASER_405, OUTPUT);
     digitalWrite(PIN_LASER_405, LOW);
+    pinMode(PIN_LED_1050, OUTPUT);
+    digitalWrite(PIN_LED_1050, LOW);
 }
 
 void Illumination::selectLed(uint8_t idx) {
@@ -42,6 +44,7 @@ void Illumination::allOff() {
         digitalWrite(LED_PINS[i], LOW);
     }
     digitalWrite(PIN_LASER_405, LOW);
+    digitalWrite(PIN_LED_1050, LOW);
 }
 
 void Illumination::laserOn() {
@@ -50,6 +53,14 @@ void Illumination::laserOn() {
 
 void Illumination::laserOff() {
     digitalWrite(PIN_LASER_405, LOW);
+}
+
+void Illumination::led1050On() {
+    digitalWrite(PIN_LED_1050, HIGH);
+}
+
+void Illumination::led1050Off() {
+    digitalWrite(PIN_LED_1050, LOW);
 }
 
 }  // namespace vera
