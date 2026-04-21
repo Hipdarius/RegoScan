@@ -83,8 +83,10 @@ from vera.schema import (
     N_FEATURES_TOTAL,
     N_LED,
     N_SPEC,
+    N_SWIR,
     PACKING_DENSITIES,
     SPEC_COLS,
+    SWIR_COLS,
     get_feature_count,
 )
 
@@ -117,9 +119,13 @@ class SensorFrame(BaseModel):
     else (sample_id, mineral_class, ilmenite_fraction) is filled in by
     the bridge after inference.
 
-    The ``as7`` field is optional -- real hardware may or may not have
-    the AS7265x triad sensor installed.  Frames without this field
-    remain fully backward-compatible.
+    Optional fields:
+    - ``as7``: AS7265x 18-band triad sensor (may be absent on dev boards
+      without the I²C breakout populated)
+    - ``swir``: Hamamatsu G12180-010A InGaAs photodiode at 940/1050 nm,
+      read through the ADS1115 16-bit ADC (absent until the SWIR daughter
+      board is installed). Frames without these fields remain fully
+      backward-compatible with v1.0/v1.1 firmware.
     """
 
     v: int = Field(ge=1, le=1, description="Wire protocol version")
@@ -129,6 +135,12 @@ class SensorFrame(BaseModel):
     led: list[float] = Field(min_length=N_LED, max_length=N_LED)
     lif_450lp: float
     as7: list[float] | None = None
+    swir: list[float] | None = Field(
+        default=None,
+        min_length=N_SWIR,
+        max_length=N_SWIR,
+        description="SWIR reflectance at 940 nm and 1050 nm",
+    )
 
 
 class GroundTruth(BaseModel):
@@ -176,9 +188,17 @@ def validate_frame(raw_json: str) -> tuple[SensorFrame, GroundTruth | None]:
 def build_feature_vector(frame: SensorFrame) -> np.ndarray:
     """Concatenate sensor channels into a feature vector.
 
-    When AS7265x data is present, the vector is ``(319,)``
-    (spec + as7265x + led + lif = 288 + 18 + 12 + 1 = "combined" mode).
-    Without it, the vector is ``(301,)`` (spec + led + lif = "full" mode).
+    The order is canonical: ``[spec | as7265x? | swir? | led | lif]``.
+    Returned shape depends on which optional channels are present:
+
+    ===========================  ===========  ============================
+    Channels present              Shape         Sensor mode
+    ===========================  ===========  ============================
+    spec + led + lif              ``(301,)``   ``"full"`` (legacy)
+    spec + swir + led + lif       ``(303,)``   ``"full"`` (v1.2+)
+    spec + as7 + led + lif        ``(319,)``   ``"combined"`` (legacy)
+    spec + as7 + swir + led + lif ``(321,)``   ``"combined"`` (v1.2+)
+    ===========================  ===========  ============================
 
     Column order matches the sensor_mode conventions in :mod:`vera.schema`.
     """
@@ -187,6 +207,8 @@ def build_feature_vector(frame: SensorFrame) -> np.ndarray:
     ]
     if frame.as7 is not None:
         parts.append(np.asarray(frame.as7, dtype=np.float32))
+    if frame.swir is not None:
+        parts.append(np.asarray(frame.swir, dtype=np.float32))
     parts.extend([
         np.asarray(frame.led, dtype=np.float32),
         np.asarray([frame.lif_450lp], dtype=np.float32),
@@ -222,6 +244,7 @@ def frame_to_measurement(
         spec=frame.spec,
         led=frame.led,
         lif_450lp=frame.lif_450lp,
+        swir=frame.swir,
         as7265x=frame.as7,
     )
 

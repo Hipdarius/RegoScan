@@ -173,6 +173,13 @@ def build_sensor_frame(
     if sensor_mode in ("combined", "multispectral"):
         frame["as7"] = _synth_as7265x(measurement.spec, rng)
 
+    # Include SWIR (940/1050 nm) when the synth_measurement produced it.
+    # synth.py always emits SWIR for v1.2+ endmember caches. The bridge
+    # treats this field as optional so older firmware/mock without SWIR
+    # remains valid.
+    if measurement.swir is not None:
+        frame["swir"] = [round(float(x), 6) for x in measurement.swir]
+
     if emit_truth:
         frame["_truth"] = {
             "mineral_class": measurement.mineral_class,
