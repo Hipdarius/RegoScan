@@ -157,6 +157,9 @@ class PredictionResponse(BaseModel):
     probabilities: list[ClassProbability]
     ilmenite_fraction: float
     confidence: float
+    entropy: float = 0.0
+    margin: float = 0.0
+    status: str = "nominal"
     model_version: str
 
 
@@ -228,7 +231,11 @@ def _to_prediction(
             for i, p in enumerate(result["probabilities"])
         ],
         "ilmenite_fraction": float(result["ilmenite_fraction"]),
-        "confidence": float(result["probabilities"][result["class_index"]]),
+        "confidence": float(result.get("confidence",
+            result["probabilities"][result["class_index"]])),
+        "entropy": float(result.get("entropy", 0.0)),
+        "margin": float(result.get("margin", 0.0)),
+        "status": str(result.get("status", "nominal")),
         "model_version": engine.version,
     }
     if extras is not None:
@@ -283,7 +290,7 @@ def meta() -> MetaResponse:
 @app.post("/api/predict", response_model=PredictionResponse)
 def predict(req: SpectrumRequest) -> dict[str, Any]:
     # Build the feature vector based on which channels are present.
-    # The order must match the training schema: [spec, as7265x, led, lif].
+    # The order must match the training schema: [spec, as7265x, swir, led, lif].
     parts: list[np.ndarray] = [
         np.asarray(req.spec, dtype=np.float32),
     ]
@@ -294,6 +301,13 @@ def predict(req: SpectrumRequest) -> dict[str, Any]:
                 detail=f"as7265x must have exactly {N_AS7265X} values, got {len(req.as7265x)}",
             )
         parts.append(np.asarray(req.as7265x, dtype=np.float32))
+    if req.swir is not None:
+        if len(req.swir) != N_SWIR:
+            raise HTTPException(
+                status_code=400,
+                detail=f"swir must have exactly {N_SWIR} values, got {len(req.swir)}",
+            )
+        parts.append(np.asarray(req.swir, dtype=np.float32))
     parts.extend([
         np.asarray(req.led, dtype=np.float32),
         np.asarray([req.lif_450lp], dtype=np.float32),
@@ -318,7 +332,8 @@ def predict_demo(seed: int | None = None) -> dict[str, Any]:
     Used by the frontend's "Scan another sample" button so the UI can
     demo full-stack behaviour without requiring a real CSV upload.
     """
-    demo = synth_demo_features(seed=seed)
+    engine = _require_engine()
+    demo = synth_demo_features(seed=seed, sensor_mode=engine._sensor_mode)
     extras: dict[str, Any] = {
         "spec": demo["spec"].tolist(),
         "led": demo["led"].tolist(),
