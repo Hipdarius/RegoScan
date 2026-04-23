@@ -48,6 +48,23 @@ public:
     /// yield to loop() mid-read.
     void readSpectrum(uint16_t* buffer);
 
+    /// Pick a new integration time that targets the upper third of the
+    /// ADC range without saturating. Call after a "scout" read with the
+    /// previous integration time. Returns the new setting.
+    ///
+    /// Algorithm: find the 95th-percentile pixel value and rescale
+    /// integration time linearly so it lands at ``target_counts``.
+    /// Bounded by [MIN_INTEGRATION_MS, MAX_INTEGRATION_MS]. The 5%
+    /// hottest pixels are excluded so a single cosmic ray hit doesn't
+    /// crater the exposure.
+    ///
+    /// @param scout       Last buffer read with integrationTimeMs().
+    /// @param target_counts  Desired 95th-percentile count (default 2800
+    ///                    of 4095 → ~70%, leaving headroom).
+    /// @return New integration time in ms (also stored internally).
+    uint16_t adaptIntegrationTime(const uint16_t* scout,
+                                   uint16_t target_counts = 2800);
+
 private:
     uint16_t integration_ms_ = DEFAULT_INTEGRATION_MS;
 

@@ -85,4 +85,47 @@ void C12880MA::readSpectrum(uint16_t* buffer) {
     }
 }
 
+uint16_t C12880MA::adaptIntegrationTime(const uint16_t* scout,
+                                         uint16_t target_counts) {
+    // Find the 95th percentile via partial selection. We use a simple
+    // counting-sort approach over the 12-bit range — O(N + 4096) is
+    // faster than O(N log N) and uses zero heap. The 5% hottest pixels
+    // are excluded so a single cosmic ray hit doesn't reduce the
+    // exposure time across the whole array.
+    constexpr uint16_t HISTOGRAM_BINS = 4096;
+    static uint16_t histogram[HISTOGRAM_BINS];
+    for (uint16_t i = 0; i < HISTOGRAM_BINS; i++) histogram[i] = 0;
+    for (uint16_t i = 0; i < N_SPEC_PIXELS; i++) {
+        uint16_t v = scout[i];
+        if (v >= HISTOGRAM_BINS) v = HISTOGRAM_BINS - 1;
+        histogram[v]++;
+    }
+
+    // Walk from the top of the histogram down until 5% of pixels have
+    // been counted. The bin we land on is the 95th-percentile value.
+    const uint16_t skip = N_SPEC_PIXELS / 20u;  // 5% = ~14 pixels for 288
+    uint32_t accumulated = 0;
+    uint16_t p95 = HISTOGRAM_BINS - 1;
+    for (int16_t bin = HISTOGRAM_BINS - 1; bin >= 0; bin--) {
+        accumulated += histogram[bin];
+        if (accumulated > skip) {
+            p95 = static_cast<uint16_t>(bin);
+            break;
+        }
+    }
+
+    // Linear rescale: new_t = old_t * target / observed.
+    // Guard against p95 == 0 (totally dark frame — push to max time).
+    if (p95 == 0) {
+        integration_ms_ = MAX_INTEGRATION_MS;
+        return integration_ms_;
+    }
+    const uint32_t old_ms = integration_ms_;
+    uint32_t new_ms = (old_ms * static_cast<uint32_t>(target_counts)) / static_cast<uint32_t>(p95);
+    if (new_ms < MIN_INTEGRATION_MS) new_ms = MIN_INTEGRATION_MS;
+    if (new_ms > MAX_INTEGRATION_MS) new_ms = MAX_INTEGRATION_MS;
+    integration_ms_ = static_cast<uint16_t>(new_ms);
+    return integration_ms_;
+}
+
 }  // namespace vera
