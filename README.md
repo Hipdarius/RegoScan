@@ -9,7 +9,7 @@
 [![CI](https://github.com/Hipdarius/VERA/actions/workflows/ci.yml/badge.svg)](https://github.com/Hipdarius/VERA/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22d3ee)](LICENSE)
-[![Tests: 111](https://img.shields.io/badge/tests-111_passing-34d399)]()
+[![Tests: 165](https://img.shields.io/badge/tests-165_passing-34d399)]()
 [![ONNX Runtime](https://img.shields.io/badge/inference-ONNX_Runtime-8b5cf6)]()
 
 ---
@@ -36,16 +36,19 @@ VERA supports **three sensor configurations** via the `sensor_mode` parameter:
 
 | Mode | Sensors | Features | Use Case |
 |:-----|:--------|:--------:|:---------|
-| **full** | C12880MA only | 301 | High-resolution spectroscopy |
-| **multispectral** | AS7265x only | 31 | Low-cost scout mode |
-| **combined** | Both sensors | 319 | Maximum classification accuracy |
+| **full** | C12880MA + SWIR | 303 | High-resolution VIS/NIR + diagnostic SWIR |
+| **multispectral** | AS7265x + SWIR | 33 | Low-cost scout mode |
+| **combined** | All four sensors | 321 | Maximum classification accuracy (deployed) |
 
 | Modality | Hardware | Channels | Range | Cost |
 |:---------|:---------|:--------:|:------|-----:|
 | **VIS/NIR Spectrometer** | Hamamatsu C12880MA | 288 | 340 -- 850 nm | ~€290 |
-| **Multispectral Sensor** | AMS AS7265x Triad | 18 | 410 -- 940 nm | ~€25 |
-| **Narrowband LED Array** | 12x discrete LEDs | 12 | 385 -- 940 nm | ~€55 |
+| **Multispectral Sensor** | AMS AS7265x Triad | 18 | 410 -- 940 nm | ~€60 |
+| **SWIR InGaAs Photodiode** | Hamamatsu G12180-010A + ADS1115 + OPA380 | 2 | 940 / 1050 nm | ~€85 |
+| **Narrowband LED Array** | 12x discrete LEDs + 1050 nm | 13 | 385 -- 1050 nm | ~€60 |
 | **405 nm LIF** | Laser diode + 450 LP filter | 1 | Fluorescence | ~€18 |
+
+The 940 / 1050 nm SWIR pair targets the **1-µm Fe²⁺ crystal-field absorption band** (Burns 1993) — the most diagnostic feature for olivine vs pyroxene vs ilmenite discrimination. Adding it lifted cross-seed generalization from 70% to 99.3%.
 
 ---
 
@@ -54,7 +57,7 @@ VERA supports **three sensor configurations** via the `sensor_mode` parameter:
 The probe is driven by an **ESP32-S3** microcontroller running a non-blocking acquisition state machine:
 
 ```
-IDLE → DARK_FRAME → BROADBAND → MULTISPECTRAL → NARROWBAND (×12) → LIF → TRANSMIT
+IDLE → DARK_FRAME → BROADBAND → MULTISPECTRAL → NARROWBAND (×12) → SWIR (940 / 1050 nm) → LIF → TRANSMIT
 ```
 
 **Design constraints:**
