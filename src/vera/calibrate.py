@@ -377,15 +377,231 @@ def lambertian_correction(
     return np.asarray(refl, dtype=np.float64) / mu0
 
 
+# ---------------------------------------------------------------------------
+# Per-pixel dark-current temperature coefficient fitting
+# ---------------------------------------------------------------------------
+
+
+def fit_dark_current_coefficients(
+    dark_frames: np.ndarray,
+    temperatures_c: np.ndarray,
+    *,
+    reference_temp_c: float = DARK_REF_TEMP_C,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Fit per-pixel dark current vs. temperature on real bench data.
+
+    For each of the ``N_SPEC`` pixels, fits
+
+        dark_pixel(T) = intercept + slope * (T - reference_temp_c)
+
+    via vectorised ordinary least squares. The intercept is the dark
+    count at the reference temperature; the slope is the per-pixel
+    counts-per-degree-Celsius coefficient. ``DARK_TEMP_COEFF_PER_C`` is
+    a single scalar default — using the per-pixel slope from this fit
+    is meaningfully more accurate (typical pixel-to-pixel spread is
+    ±50% around the array mean).
+
+    Parameters
+    ----------
+    dark_frames
+        Stack of dark frames captured at known temperatures. Shape:
+        ``(M, N_SPEC)``. Need at least 2 frames at distinct temperatures
+        to fit a slope.
+    temperatures_c
+        Probe temperature when each frame was captured. Shape: ``(M,)``.
+    reference_temp_c
+        Reference temperature for the intercept (typically 22 °C).
+
+    Returns
+    -------
+    intercept, slope : ndarray, ndarray
+        Both shape ``(N_SPEC,)``. ``slope`` is in counts/°C.
+    """
+    df = np.asarray(dark_frames, dtype=np.float64)
+    T = np.asarray(temperatures_c, dtype=np.float64) - float(reference_temp_c)
+    if df.ndim != 2 or df.shape[1] != N_SPEC:
+        raise ValueError(
+            f"dark_frames must have shape (M, {N_SPEC}), got {df.shape}"
+        )
+    if T.shape != (df.shape[0],):
+        raise ValueError(
+            f"temperatures_c must be 1-D length {df.shape[0]}, got {T.shape}"
+        )
+    if T.shape[0] < 2:
+        raise ValueError("need at least 2 temperatures to fit a slope")
+    if np.allclose(T, T[0]):
+        raise ValueError(
+            "all temperatures are identical — cannot solve for slope"
+        )
+
+    # Build the design matrix once; solve all 288 pixels simultaneously.
+    A = np.column_stack([np.ones_like(T), T])  # (M, 2)
+    # lstsq returns (2, N_SPEC) when the RHS is (M, N_SPEC)
+    coeffs, *_ = np.linalg.lstsq(A, df, rcond=None)
+    intercept = coeffs[0].astype(np.float64)
+    slope = coeffs[1].astype(np.float64)
+    return intercept, slope
+
+
+@dataclass(frozen=True)
+class CalibrationProfile:
+    """Persisted calibration capturing real-bench characterization.
+
+    Distinct from ``CalibrationFrames``: that one holds two snapshots
+    (dark + white) at fixed conditions. ``CalibrationProfile`` holds
+    the *fitted* characterization — per-pixel dark slope from a
+    multi-temperature sweep — so a single live frame can be calibrated
+    at any operating temperature.
+    """
+
+    dark_intercept: np.ndarray   # (N_SPEC,) dark counts at reference_temp_c
+    dark_slope: np.ndarray       # (N_SPEC,) counts per °C above reference
+    white: np.ndarray            # (N_SPEC,) white reference counts
+    white_integration_ms: float
+    dark_integration_ms: float
+    reference_temp_c: float = DARK_REF_TEMP_C
+    n_temperatures_fitted: int = 0
+    fit_residual_mean: float = 0.0  # mean abs residual across pixels (counts)
+
+    def __post_init__(self) -> None:
+        for name, arr in (
+            ("dark_intercept", self.dark_intercept),
+            ("dark_slope", self.dark_slope),
+            ("white", self.white),
+        ):
+            a = np.asarray(arr)
+            if a.ndim != 1 or a.shape[0] != N_SPEC:
+                raise ValueError(
+                    f"{name} must have shape ({N_SPEC},), got {a.shape}"
+                )
+
+    def save(self, path) -> None:
+        from pathlib import Path
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        np.savez(
+            path,
+            dark_intercept=self.dark_intercept,
+            dark_slope=self.dark_slope,
+            white=self.white,
+            white_integration_ms=self.white_integration_ms,
+            dark_integration_ms=self.dark_integration_ms,
+            reference_temp_c=self.reference_temp_c,
+            n_temperatures_fitted=self.n_temperatures_fitted,
+            fit_residual_mean=self.fit_residual_mean,
+        )
+
+    @classmethod
+    def load(cls, path) -> "CalibrationProfile":
+        d = np.load(path)
+        return cls(
+            dark_intercept=d["dark_intercept"],
+            dark_slope=d["dark_slope"],
+            white=d["white"],
+            white_integration_ms=float(d["white_integration_ms"]),
+            dark_integration_ms=float(d["dark_integration_ms"]),
+            reference_temp_c=float(d["reference_temp_c"]),
+            n_temperatures_fitted=int(d.get("n_temperatures_fitted", 0)),
+            fit_residual_mean=float(d.get("fit_residual_mean", 0.0)),
+        )
+
+    @classmethod
+    def fit(
+        cls,
+        dark_frames: np.ndarray,
+        dark_temperatures_c: np.ndarray,
+        white: np.ndarray,
+        *,
+        white_integration_ms: float,
+        dark_integration_ms: float,
+        reference_temp_c: float = DARK_REF_TEMP_C,
+    ) -> "CalibrationProfile":
+        """Convenience: run :func:`fit_dark_current_coefficients` and
+        package the result in a ``CalibrationProfile`` with residual
+        diagnostics."""
+        intercept, slope = fit_dark_current_coefficients(
+            dark_frames,
+            dark_temperatures_c,
+            reference_temp_c=reference_temp_c,
+        )
+        # Compute mean absolute residual (counts) for QA logging.
+        T = np.asarray(dark_temperatures_c, dtype=np.float64) - reference_temp_c
+        predicted = intercept[None, :] + T[:, None] * slope[None, :]
+        residual = float(np.mean(np.abs(np.asarray(dark_frames, dtype=np.float64) - predicted)))
+        return cls(
+            dark_intercept=intercept,
+            dark_slope=slope,
+            white=np.asarray(white, dtype=np.float64),
+            white_integration_ms=float(white_integration_ms),
+            dark_integration_ms=float(dark_integration_ms),
+            reference_temp_c=float(reference_temp_c),
+            n_temperatures_fitted=int(np.asarray(dark_temperatures_c).shape[0]),
+            fit_residual_mean=residual,
+        )
+
+
+def calibrate_with_profile(
+    raw: np.ndarray,
+    *,
+    integration_ms: float,
+    temp_c: float,
+    profile: CalibrationProfile,
+    eps: float = 1e-6,
+) -> np.ndarray:
+    """Calibrate a live frame using a fitted ``CalibrationProfile``.
+
+    This is the production calibration entrypoint once a real bench
+    sweep has been performed. It uses **per-pixel** dark slopes
+    (from :class:`CalibrationProfile`) instead of the single scalar
+    coefficient that :func:`calibrate_spectrum` falls back to.
+    """
+    raw_arr = np.asarray(raw, dtype=np.float64)
+    one_d = raw_arr.ndim == 1
+    if one_d:
+        raw_arr = raw_arr[None, :]
+    if raw_arr.shape[-1] != N_SPEC:
+        raise ValueError(
+            f"raw must have last axis = {N_SPEC}, got {raw_arr.shape}"
+        )
+
+    target_ms = profile.white_integration_ms
+
+    # Scale live frame to target integration time
+    raw_scaled = normalise_integration_time(
+        raw_arr, integration_ms=integration_ms, target_ms=target_ms
+    )
+
+    # Per-pixel dark at the current temperature
+    delta_T = float(temp_c) - profile.reference_temp_c
+    dark_at_T = profile.dark_intercept + delta_T * profile.dark_slope
+    dark_scaled = normalise_integration_time(
+        dark_at_T,
+        integration_ms=profile.dark_integration_ms,
+        target_ms=target_ms,
+    )
+
+    # White reference (already at target_ms by definition)
+    white = profile.white
+
+    denom = white - dark_scaled
+    denom = np.where(np.abs(denom) < eps, eps, denom)
+    refl = (raw_scaled - dark_scaled[None, :]) / denom[None, :]
+    refl = np.clip(refl, 0.0, REFL_CLIP_MAX)
+    return refl[0] if one_d else refl
+
+
 __all__ = [
     "CalibrationFrames",
+    "CalibrationProfile",
     "DARK_REF_TEMP_C",
     "DARK_TEMP_COEFF_PER_C",
     "REFL_CLIP_MAX",
     "SAT_THRESHOLD_COUNTS",
     "calibrate_spectrum",
+    "calibrate_with_profile",
     "correct_dark_for_temperature",
     "detect_saturation",
+    "fit_dark_current_coefficients",
     "lambertian_correction",
     "lommel_seeliger_correction",
     "normalise_integration_time",

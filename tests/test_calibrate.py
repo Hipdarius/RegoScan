@@ -10,9 +10,12 @@ from vera.calibrate import (
     REFL_CLIP_MAX,
     SAT_THRESHOLD_COUNTS,
     CalibrationFrames,
+    CalibrationProfile,
     calibrate_spectrum,
+    calibrate_with_profile,
     correct_dark_for_temperature,
     detect_saturation,
+    fit_dark_current_coefficients,
     lambertian_correction,
     lommel_seeliger_correction,
     normalise_integration_time,
@@ -257,3 +260,154 @@ def test_lambertian_no_op_at_normal_incidence():
 def test_lambertian_rejects_grazing_incidence():
     with pytest.raises(ValueError):
         lambertian_correction(np.array([0.5]), incidence_deg=90.0)
+
+
+# ---------------------------------------------------------------------------
+# fit_dark_current_coefficients
+# ---------------------------------------------------------------------------
+
+
+def _synth_dark_sweep(
+    n_temps: int = 5,
+    *,
+    base_intercept: float = 100.0,
+    base_slope: float = 2.0,
+    pixel_variation: float = 0.5,
+    seed: int = 0,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Build a synthetic dark sweep with known per-pixel slopes.
+
+    Returns (frames, temps, true_intercept, true_slope).
+    """
+    rng = np.random.default_rng(seed)
+    temps = np.linspace(15.0, 35.0, n_temps)
+    # Per-pixel coefficients with realistic variation
+    true_intercept = base_intercept + rng.normal(0, 5.0, size=N_SPEC)
+    true_slope = base_slope + rng.normal(0, base_slope * pixel_variation, size=N_SPEC)
+    # Build frames (no noise — exact fit case)
+    delta = temps - DARK_REF_TEMP_C
+    frames = true_intercept[None, :] + delta[:, None] * true_slope[None, :]
+    return frames, temps, true_intercept, true_slope
+
+
+def test_fit_dark_current_recovers_known_coefficients():
+    """No-noise synthetic sweep must recover the exact slopes/intercepts."""
+    frames, temps, true_intercept, true_slope = _synth_dark_sweep(n_temps=5)
+    intercept, slope = fit_dark_current_coefficients(frames, temps)
+    np.testing.assert_allclose(intercept, true_intercept, atol=1e-9)
+    np.testing.assert_allclose(slope, true_slope, atol=1e-9)
+
+
+def test_fit_dark_current_handles_noise():
+    """With Gaussian read noise the fit recovers slopes within tolerance."""
+    frames, temps, true_int, true_slope = _synth_dark_sweep(n_temps=8)
+    rng = np.random.default_rng(42)
+    frames_noisy = frames + rng.normal(0, 0.5, size=frames.shape)
+    intercept, slope = fit_dark_current_coefficients(frames_noisy, temps)
+    # Slopes recovered to within a few % of the noise-free truth
+    np.testing.assert_allclose(slope, true_slope, atol=0.3)
+
+
+def test_fit_dark_current_rejects_single_temp():
+    frames = np.zeros((1, N_SPEC))
+    temps = np.array([22.0])
+    with pytest.raises(ValueError, match="at least 2"):
+        fit_dark_current_coefficients(frames, temps)
+
+
+def test_fit_dark_current_rejects_identical_temps():
+    """Cannot solve for slope when ΔT = 0."""
+    frames = np.zeros((3, N_SPEC))
+    temps = np.array([22.0, 22.0, 22.0])
+    with pytest.raises(ValueError, match="identical"):
+        fit_dark_current_coefficients(frames, temps)
+
+
+def test_fit_dark_current_rejects_wrong_shape():
+    with pytest.raises(ValueError):
+        fit_dark_current_coefficients(np.zeros((3, 50)), np.array([15.0, 22.0, 30.0]))
+
+
+# ---------------------------------------------------------------------------
+# CalibrationProfile
+# ---------------------------------------------------------------------------
+
+
+def test_profile_fit_packages_per_pixel_slope():
+    frames, temps, _, true_slope = _synth_dark_sweep(n_temps=5)
+    white = _flat_frame(3000.0)
+    profile = CalibrationProfile.fit(
+        frames,
+        temps,
+        white,
+        white_integration_ms=10.0,
+        dark_integration_ms=10.0,
+    )
+    assert profile.n_temperatures_fitted == 5
+    assert profile.dark_slope.shape == (N_SPEC,)
+    np.testing.assert_allclose(profile.dark_slope, true_slope, atol=1e-9)
+    assert profile.fit_residual_mean < 1e-6  # no-noise case
+
+
+def test_profile_save_load_roundtrip(tmp_path):
+    frames, temps, _, _ = _synth_dark_sweep(n_temps=4)
+    profile = CalibrationProfile.fit(
+        frames,
+        temps,
+        _flat_frame(3000.0),
+        white_integration_ms=10.0,
+        dark_integration_ms=10.0,
+    )
+    out = tmp_path / "cal.npz"
+    profile.save(out)
+    reloaded = CalibrationProfile.load(out)
+    np.testing.assert_allclose(reloaded.dark_intercept, profile.dark_intercept)
+    np.testing.assert_allclose(reloaded.dark_slope, profile.dark_slope)
+    np.testing.assert_allclose(reloaded.white, profile.white)
+    assert reloaded.white_integration_ms == profile.white_integration_ms
+    assert reloaded.n_temperatures_fitted == profile.n_temperatures_fitted
+
+
+def test_calibrate_with_profile_white_returns_unity():
+    frames, temps, _, _ = _synth_dark_sweep(n_temps=3)
+    white = _flat_frame(3000.0)
+    profile = CalibrationProfile.fit(
+        frames, temps, white, white_integration_ms=10.0, dark_integration_ms=10.0
+    )
+    refl = calibrate_with_profile(
+        white,
+        integration_ms=10.0,
+        temp_c=DARK_REF_TEMP_C,
+        profile=profile,
+    )
+    np.testing.assert_allclose(refl, 1.0, atol=1e-6)
+
+
+def test_calibrate_with_profile_uses_per_pixel_slope():
+    """Two pixels with very different slopes should produce different
+    reflectance values at elevated temperature even when given identical
+    raw counts — proves the per-pixel slope is being applied."""
+    frames = np.zeros((3, N_SPEC), dtype=np.float64)
+    # Pixel 0: slope = 0 counts/°C; Pixel 1: slope = 20 counts/°C
+    delta_T = np.array([-7.0, 0.0, 13.0])  # T = 15, 22, 35
+    frames[:, 0] = 100.0 + delta_T * 0.0     # Always 100
+    frames[:, 1] = 100.0 + delta_T * 20.0    # 100 → 240 → 360 counts
+    # Other pixels constant
+    frames[:, 2:] = 100.0
+
+    profile = CalibrationProfile.fit(
+        frames,
+        np.array([15.0, 22.0, 35.0]),
+        np.full(N_SPEC, 3000.0),
+        white_integration_ms=10.0,
+        dark_integration_ms=10.0,
+    )
+    # Same raw frame at high temperature: pixel 1 should subtract more dark
+    raw = np.full(N_SPEC, 1000.0)
+    refl_hot = calibrate_with_profile(
+        raw, integration_ms=10.0, temp_c=35.0, profile=profile
+    )
+    # Pixel 0 has zero slope → dark stays at 100
+    # Pixel 1 has 20 counts/°C → dark = 100 + 13*20 = 360 at 35°C
+    # So pixel 1's reflectance must be lower than pixel 0's
+    assert refl_hot[1] < refl_hot[0]
