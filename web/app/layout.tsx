@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Chakra_Petch, Azeret_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { NavBar } from "@/components/NavBar";
 
 const fontDisplay = Chakra_Petch({
   subsets: ["latin"],
@@ -39,7 +40,10 @@ export default function RootLayout({
     >
       <body className="min-h-screen antialiased">
         <ThemeProvider>
-          <div className="relative z-10">{children}</div>
+          <div className="relative z-10">
+            <NavBar />
+            {children}
+          </div>
         </ThemeProvider>
       </body>
     </html>
