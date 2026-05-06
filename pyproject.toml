@@ -8,7 +8,7 @@ authors = [{ name = "Darius Ferent" }]
 license = { text = "MIT" }
 
 dependencies = [
-    "numpy>=1.26",
+    "numpy>=2.4.4",
     "pandas>=2.1",
     "scipy>=1.11",
     "scikit-learn>=1.4",
