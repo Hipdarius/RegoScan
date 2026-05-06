@@ -14,7 +14,7 @@
 [![ESP32](https://img.shields.io/badge/firmware-ESP32--S3-e7352c?logo=espressif&logoColor=white)](firmware)
 [![ONNX Runtime](https://img.shields.io/badge/inference-ONNX_Runtime-8b5cf6)](https://onnxruntime.ai)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22d3ee)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-214_passing-34d399)](tests)
+[![Tests](https://img.shields.io/badge/tests-220_passing-34d399)](tests)
 
 ---
 
@@ -64,11 +64,11 @@ photons to pixels.
 - **Active learning.** Acquisition score combining entropy, top-1 margin, and
   SAM/CNN disagreement. ~2× annotation efficiency vs. random on synthetic
   benchmarks.
-- **Non-blocking firmware.** No `delay()`, no heap, all buffers `constexpr`.
-  Adaptive integration time targets the 95th-percentile pixel via a
-  counting-sort histogram (O(N + 4096), zero heap).
-- **214 tests.** Unit, property, end-to-end. Includes the firmware bridge,
-  Hapke roundtrip, calibration math, OOD thresholds, and active learning.
+- **Non-blocking firmware.** No `delay()`, no heap, all buffers `constexpr`,
+  and streamed JSON output. Adaptive integration time targets the
+  95th-percentile pixel via a counting-sort histogram (O(N + 4096), zero heap).
+- **220 passing tests.** Unit, property, end-to-end. Includes the firmware
+  bridge, Hapke roundtrip, calibration math, OOD thresholds, and active learning.
 
 ---
 
@@ -84,7 +84,7 @@ photons to pixels.
 | SAM baseline | **16.8 %** | ≈ chance for k = 6 |
 | CNN improvement over SAM | **+82.8 pp** | multimodal vs. spec-only |
 | Active-learning lift | **≈ 2× labels-to-target** | vs. random sampling |
-| Tests | **214 passing** | 0 skipped |
+| Tests | **220 passing** | 1 optional live-model demo skip when no model artefact is loaded |
 
 ---
 
@@ -254,7 +254,7 @@ make train
 # Or run the one-shot bring-up
 bash scripts/setup-bench.sh
 
-# Run the full test suite (214 tests)
+# Run the full test suite
 make test
 
 # Launch API + console
@@ -277,8 +277,8 @@ python scripts/mock_esp32.py | python scripts/bridge.py --csv stream.csv --post
 | Method | Endpoint | Description |
 |:--|:--|:--|
 | `GET` | `/healthz` | Liveness check + model status |
-| `GET` | `/api/meta` | Schema version, sensor mode, feature count, ONNX hash |
-| `POST` | `/api/predict` | Classify a feature vector (33, 303, or 321 features depending on mode) |
+| `GET` | `/api/meta` | Schema version, sensor mode, feature count, class count, temperature, ONNX hash |
+| `POST` | `/api/predict` | Classify a canonical feature vector (33, 303, or 321 features depending on mode) |
 | `POST` | `/api/predict/demo` | Synthesize + classify a random regolith spectrum |
 | `GET` | `/api/endmembers` | Reference mineral spectra for overlay |
 
@@ -286,6 +286,10 @@ python scripts/mock_esp32.py | python scripts/bridge.py --csv stream.csv --post
 posterior, top-1 margin, normalised entropy, and a `status` enum — so
 the console can render `treat as advisory` warnings without recomputing
 anything client-side.
+
+The local FastAPI service and Vercel handler both enforce schema v1.2.0,
+derive expected feature counts from the loaded ONNX model, and keep CORS
+restricted to localhost origins unless `VERA_CORS_ORIGINS` is set.
 
 ---
 
@@ -302,11 +306,12 @@ vera/
 │  ├─ evaluate.py            Confusion matrices, bootstrap CIs, ROC/PR
 │  ├─ calibrate.py           Dark, white, integration, temperature, photometry
 │  ├─ uncertainty.py         Entropy, margin, OOD classifier, T-scaling
-│  ├─ inference.py           ONNX Runtime engine (sensor-mode aware)
+│  ├─ inference.py           ONNX Runtime engine (sensor-mode + T-scaling aware)
 │  ├─ inference_robust.py    TTA, sample fusion, temperature fitting, ECE
 │  ├─ sam.py                 Spectral Angle Mapper baseline
 │  ├─ active_learning.py     Acquisition-score ranker for sample budgeting
 │  ├─ quantize.py            ONNX FP32 export + static INT8 quantization
+│  ├─ torch_io.py            Safe state-dict loading helper
 │  └─ models/cnn.py          1D ResNet implementation
 │
 ├─ apps/api.py               FastAPI service (5 endpoints)
@@ -322,14 +327,14 @@ vera/
 │  ├─ AS7265x.{h,cpp}        18-band I2C multispectral driver
 │  ├─ ADS1115.{h,cpp}        16-bit ADC for InGaAs SWIR readout
 │  ├─ Illumination.{h,cpp}   LED array + laser + 1050 nm GPIO control
-│  ├─ Protocol.{h,cpp}       ArduinoJson serialization + thermistor
+│  ├─ Protocol.{h,cpp}       Streamed JSON protocol + thermistor
 │  └─ Config.h               Pin assignments, calibration constants
 │
-├─ tests/                    214 tests across 15 modules
-├─ scripts/                  mock_esp32, bridge, ablate_mixing, build_tflite_micro
+├─ tests/                    220 passing tests across 15 modules
+├─ scripts/                  mock_esp32, bridge, clean, ablate_mixing, build_tflite_micro
 ├─ docs/                     engineering-journal.md, paper-notes.md
 ├─ runs/                     Trained artefacts (model.onnx, meta.json)
-├─ .github/workflows/        CI: pytest + tsc + PlatformIO native
+├─ .github/workflows/        CI: pytest, web lint/typecheck/build, audit, CodeQL, PlatformIO
 └─ pyproject.toml            uv / hatch project config
 ```
 
