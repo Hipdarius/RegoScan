@@ -7,44 +7,104 @@ import { postPrediction } from "@/lib/api";
 import type { DemoResponse } from "@/lib/types";
 
 /**
- * Parse a CSV file and extract the first data row's spec_000..spec_287,
- * led_385..led_940, and lif_450lp columns.
+ * Parse a CSV file and extract the first data row's canonical sensor columns.
  */
-function parseCSV(text: string): { spec: number[]; led: number[]; lif_450lp: number } | null {
+type ParsedMeasurement = {
+  spec: number[];
+  led: number[];
+  lif_450lp: number;
+  swir?: number[];
+  as7265x?: number[];
+};
+
+function numericColumns(
+  headers: string[],
+  values: number[],
+  columns: string[]
+): number[] | null {
+  const out: number[] = [];
+  for (const col of columns) {
+    const idx = headers.indexOf(col);
+    if (idx === -1) return null;
+    out.push(values[idx]);
+  }
+  return out.every(Number.isFinite) ? out : null;
+}
+
+function parseCSV(text: string): ParsedMeasurement | null {
   const lines = text.trim().split(/\r?\n/);
   if (lines.length < 2) return null;
 
   const headers = lines[0].split(",").map((h) => h.trim());
   const values = lines[1].split(",").map((v) => parseFloat(v.trim()));
 
-  // Extract spec_000..spec_287
-  const spec: number[] = [];
-  for (let i = 0; i < 288; i++) {
-    const col = `spec_${String(i).padStart(3, "0")}`;
-    const idx = headers.indexOf(col);
-    if (idx === -1) return null;
-    spec.push(values[idx]);
-  }
+  const spec = numericColumns(
+    headers,
+    values,
+    Array.from({ length: 288 }, (_, i) => `spec_${String(i).padStart(3, "0")}`)
+  );
+  if (!spec) return null;
 
-  // Extract led columns (look for led_* pattern)
-  const ledCols = headers
-    .map((h, idx) => ({ h, idx }))
-    .filter(({ h }) => /^led_\d+$/.test(h))
-    .sort((a, b) => {
-      const aNum = parseInt(a.h.replace("led_", ""), 10);
-      const bNum = parseInt(b.h.replace("led_", ""), 10);
-      return aNum - bNum;
-    });
-  const led = ledCols.map(({ idx }) => values[idx]);
+  const led = numericColumns(
+    headers,
+    values,
+    [
+      "led_385",
+      "led_405",
+      "led_450",
+      "led_500",
+      "led_525",
+      "led_590",
+      "led_625",
+      "led_660",
+      "led_730",
+      "led_780",
+      "led_850",
+      "led_940",
+    ]
+  );
+  if (!led) return null;
 
-  // Extract lif_450lp
   const lifIdx = headers.indexOf("lif_450lp");
   if (lifIdx === -1) return null;
   const lif_450lp = values[lifIdx];
+  if (!Number.isFinite(lif_450lp)) return null;
 
-  if (spec.some(isNaN) || led.some(isNaN) || isNaN(lif_450lp)) return null;
+  const swir = numericColumns(headers, values, ["swir_940", "swir_1050"]);
+  if (!swir) return null;
 
-  return { spec, led, lif_450lp };
+  const as7265x = numericColumns(
+    headers,
+    values,
+    [
+      "as7_410",
+      "as7_435",
+      "as7_460",
+      "as7_485",
+      "as7_510",
+      "as7_535",
+      "as7_560",
+      "as7_585",
+      "as7_610",
+      "as7_645",
+      "as7_680",
+      "as7_705",
+      "as7_730",
+      "as7_760",
+      "as7_810",
+      "as7_860",
+      "as7_900",
+      "as7_940",
+    ]
+  );
+
+  return {
+    spec,
+    led,
+    lif_450lp,
+    swir,
+    ...(as7265x ? { as7265x } : {}),
+  };
 }
 
 export function UploadPanel({
@@ -76,7 +136,7 @@ export function UploadPanel({
         const parsed = parseCSV(text);
         if (!parsed) {
           throw new Error(
-            "CSV must contain spec_000..spec_287, led_*, and lif_450lp columns"
+            "CSV must contain spec_000..spec_287, swir_940/swir_1050, led_* and lif_450lp columns. Add as7_* columns for combined or multispectral models."
           );
         }
         const result = await postPrediction(parsed);
@@ -86,6 +146,8 @@ export function UploadPanel({
           spec: parsed.spec,
           led: parsed.led,
           lif_450lp: parsed.lif_450lp,
+          swir: parsed.swir,
+          as7265x: parsed.as7265x,
           true_class: result.predicted_class,
           true_ilmenite_fraction: result.ilmenite_fraction,
         };

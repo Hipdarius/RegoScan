@@ -40,6 +40,8 @@ export function postPrediction(payload: {
   spec: number[];
   led: number[];
   lif_450lp: number;
+  swir?: number[];
+  as7265x?: number[];
 }): Promise<PredictionResponse> {
   return jsonFetch<PredictionResponse>("/api/predict", {
     method: "POST",

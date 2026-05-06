@@ -21,6 +21,9 @@ const fontMono = Azeret_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://vera.hipdarius.com"
+  ),
   title: "VERA Mission Console",
   description:
     "VIS/NIR + SWIR + 405 nm LIF probe for in-situ lunar regolith mineral classification",

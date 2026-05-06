@@ -3,7 +3,7 @@
   "version": 2,
   "framework": "nextjs",
   "buildCommand": "next build",
-  "installCommand": "npm install",
+  "installCommand": "npm ci",
   "outputDirectory": ".next",
   "functions": {
     "api/predict.py": {
@@ -24,6 +24,10 @@
     },
     {
       "source": "/api/predict/healthz",
+      "destination": "/api/predict"
+    },
+    {
+      "source": "/api/endmembers",
       "destination": "/api/predict"
     }
   ],

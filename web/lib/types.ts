@@ -53,6 +53,7 @@ export interface MetaResponse {
   model_run_dir: string | null;
   sensor_mode?: string;
   as7265x_bands_nm?: number[];
+  temperature?: number;
 }
 
 export interface EndmembersResponse {

@@ -38,16 +38,20 @@ export default function Home() {
   const [selectedHistoryIdx, setSelectedHistoryIdx] = useState(0);
 
   useEffect(() => {
-    setMetaLoading(true);
-    Promise.all([
+    let cancelled = false;
+    void Promise.all([
       fetchMeta().catch(() => null),
       fetchEndmembers().catch(() => null),
     ]).then(([m, e]) => {
+      if (cancelled) return;
       if (m) setMeta(m);
       else setError("Could not reach API — is the backend running on port 8000?");
       if (e) setEndmembers(e);
       setMetaLoading(false);
     });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const pushScan = useCallback((result: DemoResponse) => {

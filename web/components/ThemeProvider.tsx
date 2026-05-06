@@ -22,11 +22,11 @@ export function useTheme() {
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
 
-  // Read persisted preference on mount
+  // Read persisted preference on mount.
   useEffect(() => {
     const stored = localStorage.getItem("vera-theme") as Theme | null;
     if (stored === "light" || stored === "dark") {
-      setTheme(stored);
+      queueMicrotask(() => setTheme(stored));
     }
   }, []);
 
