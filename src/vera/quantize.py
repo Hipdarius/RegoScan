@@ -40,6 +40,7 @@ import torch
 
 from vera.models.cnn import RegoscanCNN
 from vera.schema import N_FEATURES_TOTAL
+from vera.torch_io import load_torch_state_dict
 
 STUB_MAGIC = b"VERA_TFLITE_STUB\x00"
 
@@ -322,7 +323,7 @@ def quantize_run(run_dir: Path, tflite_path: Path) -> dict:
     meta = json.loads(meta_path.read_text())
     n_features = meta["input_shape"][-1]
     model = RegoscanCNN(n_features=n_features)
-    model.load_state_dict(torch.load(run_dir / "model.pt"))
+    model.load_state_dict(load_torch_state_dict(run_dir / "model.pt"))
     model.eval()
 
     onnx_path = run_dir / "model.onnx"

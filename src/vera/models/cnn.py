@@ -2,11 +2,11 @@
 
 Architecture overview
 ---------------------
-Input: (B, 1, n_features) — default 301 for C12880MA full sensor mode
+Input: (B, 1, n_features) — default 303 for C12880MA + SWIR full mode
   Possible inputs by sensor mode:
-    full:          301 features (spectrum(288) + LED(12) + LIF(1))
-    multispectral:  31 features (AS7265x(18) + LED(12) + LIF(1))
-    combined:      319 features (spectrum(288) + AS7265x(18) + LED(12) + LIF(1))
+    full:          303 features (spectrum(288) + SWIR(2) + LED(12) + LIF(1))
+    multispectral:  33 features (AS7265x(18) + SWIR(2) + LED(12) + LIF(1))
+    combined:      321 features (spectrum(288) + AS7265x(18) + SWIR(2) + LED(12) + LIF(1))
 
   Stem       : conv(1→32, k=9|3)        + BN + ReLU + MaxPool(2)
                k=3 used when n_features < 64 to prevent spatial collapse
@@ -97,7 +97,7 @@ class RegoscanCNN(nn.Module):
 
         c1, c2, c3, c4 = channels
 
-        # For small inputs (e.g. 31-feature multispectral), use a smaller
+        # For small inputs (e.g. 33-feature multispectral), use a smaller
         # kernel to prevent the spatial dimension from collapsing too fast.
         if n_features < 64:
             stem_kernel, stem_padding = 3, 1
@@ -160,14 +160,14 @@ def count_params(model: nn.Module) -> int:
 def assert_input_size(n_features: int | None = None):
     """Sanity-check that the feature count is a known valid value.
 
-    When *n_features* is ``None`` the legacy check (N_FEATURES_TOTAL == 301)
+    When *n_features* is ``None`` the canonical check (N_FEATURES_TOTAL == 303)
     is performed for backward compatibility.  When an explicit count is
     passed, we only verify it is positive — the CNN adapts its stem
     automatically.
     """
     if n_features is None:
-        assert N_FEATURES_TOTAL == 301, (
-            f"CNN architecture assumes 301-feature input, got {N_FEATURES_TOTAL}"
+        assert N_FEATURES_TOTAL == 303, (
+            f"CNN architecture assumes 303-feature input, got {N_FEATURES_TOTAL}"
         )
     else:
         assert n_features > 0, (

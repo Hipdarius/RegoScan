@@ -6,7 +6,7 @@ an ESP32-S3 driving a Hamamatsu C12880MA spectrometer, 12 narrowband
 LEDs, and a 405 nm laser diode for fluorescence measurements.
 
 It uses the synthetic physics engine (:mod:`vera.synth`) to produce
-realistic 301-feature sensor readings, then emits them as newline-
+realistic 303/321-feature sensor readings, then emits them as newline-
 delimited JSON on stdout — the same framing the real firmware will use
 over UART at 115200 baud.
 
@@ -20,6 +20,7 @@ exactly these fields::
       "integration_time_ms": 200,       # sensor integration window
       "ambient_temp_c":      22.3,      # on-board thermistor reading
       "spec":               [...288],   # C12880MA pixel values
+      "swir":               [...2],     # 940/1050 nm reflectance
       "led":                [...12],    # narrowband reflectances
       "lif_450lp":           0.42       # 450 nm longpass fluorescence
     }

@@ -34,6 +34,7 @@ from vera.io_csv import read_measurements_csv
 from vera.models.cnn import RegoscanCNN
 from vera.models.plsr import build_baseline_features, load_baseline
 from vera.schema import INDEX_TO_CLASS, MINERAL_CLASSES, N_CLASSES
+from vera.torch_io import load_torch_state_dict
 
 # ---------------------------------------------------------------------------
 # Pure-numpy metrics
@@ -141,7 +142,7 @@ def predict_baseline(run_dir: Path, bundle: NumpyBundle) -> Predictions:
 
 def predict_cnn(run_dir: Path, bundle: NumpyBundle) -> Predictions:
     model = RegoscanCNN()
-    model.load_state_dict(torch.load(run_dir / "model.pt"))
+    model.load_state_dict(load_torch_state_dict(run_dir / "model.pt"))
     model.eval()
     ds = RegoscanSpectraDataset(bundle, augment=False)
     pred_cls: list[int] = []

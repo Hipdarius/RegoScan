@@ -110,13 +110,29 @@ app = FastAPI(
     description="Mineral classification + ilmenite regression from VIS/NIR spectra",
 )
 
-# CORS: permissive in dev. The Next.js frontend on Vercel uses a same-origin
-# rewrite (see vercel.json), so in prod the browser won't hit this directly.
+def _cors_origins() -> list[str]:
+    """Return configured browser origins for local API access.
+
+    The hosted Next.js app uses same-origin rewrites, so CORS is only needed
+    for local development or a separately hosted console. Keep the default
+    tight and let deployments opt in via VERA_CORS_ORIGINS.
+    """
+    raw = os.environ.get("VERA_CORS_ORIGINS")
+    if raw:
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
+    return [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+    ]
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origins(),
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
 
 
@@ -137,8 +153,12 @@ class SpectrumRequest(BaseModel):
     spec: list[float] = Field(min_length=N_SPEC, max_length=N_SPEC)
     led: list[float] = Field(min_length=N_LED, max_length=N_LED)
     lif_450lp: float
-    swir: list[float] | None = None
-    as7265x: list[float] | None = None
+    swir: list[float] | None = Field(default=None, min_length=N_SWIR, max_length=N_SWIR)
+    as7265x: list[float] | None = Field(
+        default=None,
+        min_length=N_AS7265X,
+        max_length=N_AS7265X,
+    )
 
 
 class ClassProbability(BaseModel):
@@ -226,8 +246,9 @@ def _to_prediction(
             for i, p in enumerate(result["probabilities"])
         ],
         "ilmenite_fraction": float(result["ilmenite_fraction"]),
-        "confidence": float(result.get("confidence",
-            result["probabilities"][result["class_index"]])),
+        "confidence": float(
+            result.get("confidence", result["probabilities"][result["class_index"]])
+        ),
         "entropy": float(result.get("entropy", 0.0)),
         "margin": float(result.get("margin", 0.0)),
         "status": str(result.get("status", "nominal")),
@@ -236,6 +257,48 @@ def _to_prediction(
     if extras is not None:
         payload.update(extras)
     return payload
+
+
+def _features_from_request(req: SpectrumRequest, sensor_mode: str) -> np.ndarray:
+    """Build a feature vector for the loaded model's sensor mode."""
+    parts: list[np.ndarray] = []
+
+    if sensor_mode in ("full", "combined"):
+        parts.append(np.asarray(req.spec, dtype=np.float32))
+
+    if sensor_mode in ("multispectral", "combined"):
+        if req.as7265x is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"model sensor_mode={sensor_mode!r} requires as7265x values",
+            )
+        parts.append(np.asarray(req.as7265x, dtype=np.float32))
+
+    if req.swir is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"model sensor_mode={sensor_mode!r} requires swir values",
+        )
+    parts.append(np.asarray(req.swir, dtype=np.float32))
+
+    parts.extend([
+        np.asarray(req.led, dtype=np.float32),
+        np.asarray([req.lif_450lp], dtype=np.float32),
+    ])
+    features = np.concatenate(parts)
+
+    expected_count = get_feature_count(sensor_mode)
+    if features.shape[0] != expected_count:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"expected {expected_count} features "
+                f"(model sensor_mode={sensor_mode}), got {features.shape[0]}"
+            ),
+        )
+    if not np.all(np.isfinite(features)):
+        raise HTTPException(status_code=400, detail="all feature values must be finite")
+    return features
 
 
 # ---------------------------------------------------------------------------
@@ -284,39 +347,8 @@ def meta() -> MetaResponse:
 
 @app.post("/api/predict", response_model=PredictionResponse)
 def predict(req: SpectrumRequest) -> dict[str, Any]:
-    # Build the feature vector based on which channels are present.
-    # The order must match the training schema: [spec, as7265x, swir, led, lif].
-    parts: list[np.ndarray] = [
-        np.asarray(req.spec, dtype=np.float32),
-    ]
-    if req.as7265x is not None:
-        if len(req.as7265x) != N_AS7265X:
-            raise HTTPException(
-                status_code=400,
-                detail=f"as7265x must have exactly {N_AS7265X} values, got {len(req.as7265x)}",
-            )
-        parts.append(np.asarray(req.as7265x, dtype=np.float32))
-    if req.swir is not None:
-        if len(req.swir) != N_SWIR:
-            raise HTTPException(
-                status_code=400,
-                detail=f"swir must have exactly {N_SWIR} values, got {len(req.swir)}",
-            )
-        parts.append(np.asarray(req.swir, dtype=np.float32))
-    parts.extend([
-        np.asarray(req.led, dtype=np.float32),
-        np.asarray([req.lif_450lp], dtype=np.float32),
-    ])
-    features = np.concatenate(parts)
-
-    # Determine expected feature count based on what was provided
-    expected_mode = "combined" if req.as7265x is not None else "full"
-    expected_count = get_feature_count(expected_mode)
-    if features.shape[0] != expected_count:
-        raise HTTPException(
-            status_code=400,
-            detail=f"expected {expected_count} features (mode={expected_mode}), got {features.shape[0]}",
-        )
+    engine = _require_engine()
+    features = _features_from_request(req, engine.sensor_mode)
     return _to_prediction(features)
 
 
@@ -328,7 +360,7 @@ def predict_demo(seed: int | None = None) -> dict[str, Any]:
     demo full-stack behaviour without requiring a real CSV upload.
     """
     engine = _require_engine()
-    demo = synth_demo_features(seed=seed, sensor_mode=engine._sensor_mode)
+    demo = synth_demo_features(seed=seed, sensor_mode=engine.sensor_mode)
     extras: dict[str, Any] = {
         "spec": demo["spec"].tolist(),
         "led": demo["led"].tolist(),

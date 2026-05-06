@@ -36,6 +36,7 @@ from vera.schema import (
     N_CLASSES,
     get_feature_count,
 )
+from vera.torch_io import load_torch_state_dict
 
 
 class FocalLoss(torch.nn.Module):
@@ -261,7 +262,7 @@ def run_cnn(args: argparse.Namespace) -> int:
             break
 
     # Reload best and get final scores
-    model.load_state_dict(torch.load(out / "model.pt"))
+    model.load_state_dict(load_torch_state_dict(out / "model.pt"))
     final_metrics = {
         "train": _eval_loader(model, DataLoader(train_ds, batch_size=args.batch_size)),
         "val": _eval_loader(model, val_loader),

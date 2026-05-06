@@ -29,7 +29,7 @@ from vera.io_csv import (
     extract_spectra,
     extract_swir,
 )
-from vera.schema import AS7265X_COLS, SWIR_COLS
+from vera.schema import AS7265X_COLS, N_SWIR, SWIR_COLS
 
 # ---------------------------------------------------------------------------
 # Sample-level split
@@ -207,9 +207,9 @@ class RegoscanSpectraDataset(Dataset):
     ``features`` is a ``(1, K)`` float32 tensor suitable for ``Conv1d``
     with one input channel. ``K`` depends on the sensor mode:
 
-    * ``"full"``: K = 288 + 12 + 1 = 301  (spectrum + LEDs + LIF)
-    * ``"multispectral"``: K = 18 + 12 + 1 = 31  (AS7265x + LEDs + LIF)
-    * ``"combined"``: K = 288 + 18 + 12 + 1 = 319
+    * ``"full"``: K = 288 + 2 + 12 + 1 = 303  (spectrum + SWIR + LEDs + LIF)
+    * ``"multispectral"``: K = 18 + 2 + 12 + 1 = 33  (AS7265x + SWIR + LEDs + LIF)
+    * ``"combined"``: K = 288 + 18 + 2 + 12 + 1 = 321
 
     Augmentation is applied **only to the spectrometer block**, never to
     the LEDs, LIF, or AS7265x channels.
@@ -230,12 +230,16 @@ class RegoscanSpectraDataset(Dataset):
         self.ilmenite = bundle.ilmenite.astype(np.float32)
         self.sample_ids = np.asarray(bundle.sample_ids)
         self.sensor_mode = bundle.sensor_mode
-        self.swir: np.ndarray | None = (
-            bundle.swir.astype(np.float32) if bundle.swir is not None else None
+        self.swir: np.ndarray = (
+            bundle.swir.astype(np.float32)
+            if bundle.swir is not None
+            else np.zeros((self.spectra.shape[0], N_SWIR), dtype=np.float32)
         )
         self.as7265x: np.ndarray | None = (
             bundle.as7265x.astype(np.float32) if bundle.as7265x is not None else None
         )
+        if self.sensor_mode in ("multispectral", "combined") and self.as7265x is None:
+            raise ValueError(f"sensor_mode={self.sensor_mode!r} requires AS7265x data")
         self.augment = augment
         self.augment_cfg = augment_cfg or AugmentConfig()
         self._rng = np.random.default_rng(seed)
@@ -268,12 +272,13 @@ class RegoscanSpectraDataset(Dataset):
             parts.append(spec)
         if self.sensor_mode in ("multispectral", "combined") and self.as7265x is not None:
             parts.append(self.as7265x[idx])
-        if self.swir is not None:
-            swir_val = self.swir[idx].copy()
-            if self.augment:
-                swir_val = swir_val + self._rng.normal(0.0, 0.012, size=swir_val.shape).astype(np.float32)
-                swir_val = np.clip(swir_val, 0.0, 1.5)
-            parts.append(swir_val)
+        swir_val = self.swir[idx].copy()
+        if self.augment:
+            swir_val = swir_val + self._rng.normal(0.0, 0.012, size=swir_val.shape).astype(
+                np.float32
+            )
+            swir_val = np.clip(swir_val, 0.0, 1.5)
+        parts.append(swir_val)
         parts.append(leds)
         parts.append(np.array([lif_val], dtype=np.float32))
 

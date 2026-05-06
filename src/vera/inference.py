@@ -28,9 +28,9 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-# noqa-after-block: the imports below must follow the path insert above
-# so that the in-source `vera` package resolves when this module is
-# imported from a runs/ artefact directory or from the Vercel function.
+# The imports below must follow the path insert above so that the in-source
+# `vera` package resolves when this module is imported from a runs/ artefact
+# directory or from the Vercel function.
 from vera.schema import (  # noqa: E402
     MINERAL_CLASSES,
     N_AS7265X,
@@ -134,8 +134,14 @@ class InferenceEngine:
         if meta_path.exists():
             meta = _json.loads(meta_path.read_text())
             self._sensor_mode: str = meta.get("sensor_mode", "full")
+            self._temperature: float = float(meta.get("temperature", 1.0))
         else:
             self._sensor_mode = "full"
+            self._temperature = 1.0
+        if self._temperature <= 0:
+            raise ValueError(
+                f"meta.json temperature must be positive, got {self._temperature}"
+            )
         self._n_features: int = get_feature_count(self._sensor_mode)
 
         self._session = ort.InferenceSession(
@@ -164,6 +170,11 @@ class InferenceEngine:
     def expected_features(self) -> int:
         """Number of input features this model expects."""
         return self._n_features
+
+    @property
+    def temperature(self) -> float:
+        """Post-hoc calibration temperature loaded from meta.json."""
+        return self._temperature
 
     def predict(self, features: np.ndarray) -> dict[str, Any]:
         """Run inference on a single feature vector.
@@ -197,7 +208,8 @@ class InferenceEngine:
         x = features.astype(np.float32).reshape(1, 1, n)
         logits, ilmenite = self._session.run(None, {self._input_name: x})
 
-        probs = _softmax(logits[0])
+        scaled_logits = np.asarray(logits[0], dtype=np.float64) / self._temperature
+        probs = _softmax(scaled_logits)
         class_idx = int(np.argmax(probs))
 
         # ilmenite head output shape varies: (B,1) or (B,) depending
@@ -237,9 +249,9 @@ def synth_demo_features(
     seed : int | None
         RNG seed for reproducibility.
     sensor_mode : str
-        ``"full"``          — 301 features (spec + led + lif).
-        ``"multispectral"`` —  31 features (as7265x + led + lif).
-        ``"combined"``      — 319 features (spec + as7265x + led + lif).
+        ``"full"``          — 303 features (spec + swir + led + lif).
+        ``"multispectral"`` —  33 features (as7265x + swir + led + lif).
+        ``"combined"``      — 321 features (spec + as7265x + swir + led + lif).
     """
     from vera.synth import (
         fractions_for_class,

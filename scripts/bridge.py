@@ -75,6 +75,7 @@ if str(SRC) not in sys.path:
 from vera.schema import (
     ALL_COLUMNS,
     INDEX_TO_CLASS,
+    N_AS7265X,
     N_LED,
     N_SPEC,
     N_SWIR,
@@ -208,6 +209,44 @@ def build_feature_vector(frame: SensorFrame) -> np.ndarray:
     return np.concatenate(parts)
 
 
+def build_feature_vector_for_model(frame: SensorFrame, expected_features: int) -> np.ndarray:
+    """Build features, zero-filling missing SWIR for canonical v1.2 models."""
+    features = build_feature_vector(frame)
+    if features.size == expected_features:
+        return features
+
+    zero_swir = np.zeros(N_SWIR, dtype=np.float32)
+    spec = np.asarray(frame.spec, dtype=np.float32)
+    led = np.asarray(frame.led, dtype=np.float32)
+    lif = np.asarray([frame.lif_450lp], dtype=np.float32)
+
+    if frame.swir is None and frame.as7 is None:
+        canonical_full = N_SPEC + N_SWIR + N_LED + 1
+        if expected_features == canonical_full:
+            return np.concatenate([spec, zero_swir, led, lif])
+
+    if frame.swir is None and frame.as7 is not None:
+        canonical_combined = N_SPEC + N_AS7265X + N_SWIR + N_LED + 1
+        if expected_features == canonical_combined:
+            as7 = np.asarray(frame.as7, dtype=np.float32)
+            return np.concatenate([spec, as7, zero_swir, led, lif])
+
+    if frame.swir is not None and frame.as7 is None:
+        legacy_full = N_SPEC + N_LED + 1
+        if expected_features == legacy_full:
+            return np.concatenate([spec, led, lif])
+
+    if frame.swir is not None and frame.as7 is not None:
+        legacy_combined = N_SPEC + N_AS7265X + N_LED + 1
+        if expected_features == legacy_combined:
+            as7 = np.asarray(frame.as7, dtype=np.float32)
+            return np.concatenate([spec, as7, led, lif])
+
+    raise ValueError(
+        f"frame produced {features.size} features, but model expects {expected_features}"
+    )
+
+
 def frame_to_measurement(
     frame: SensorFrame,
     *,
@@ -236,7 +275,7 @@ def frame_to_measurement(
         spec=frame.spec,
         led=frame.led,
         lif_450lp=frame.lif_450lp,
-        swir=frame.swir,
+        swir=frame.swir if frame.swir is not None else [0.0] * N_SWIR,
         as7265x=frame.as7,
     )
 
@@ -312,7 +351,7 @@ def run_inference(engine: Any, features: np.ndarray) -> tuple[str, float, float]
     engine
         An :class:`~vera.inference.InferenceEngine` instance.
     features
-        Shape ``(301,)`` feature vector.
+        Canonical or legacy feature vector accepted by the loaded model.
 
     Returns
     -------
@@ -443,8 +482,18 @@ def run_bridge(
                 continue
 
             # --- Inference ---
-            features = build_feature_vector(frame)
-            pred_class, pred_ilm, confidence = run_inference(engine, features)
+            try:
+                expected_features = int(getattr(engine, "expected_features", 0) or 0)
+                features = (
+                    build_feature_vector_for_model(frame, expected_features)
+                    if expected_features > 0
+                    else build_feature_vector(frame)
+                )
+                pred_class, pred_ilm, confidence = run_inference(engine, features)
+            except ValueError as exc:
+                stats.frames_malformed += 1
+                logger.error("Feature/model mismatch on frame %d: %s", stats.frames_received, exc)
+                continue
 
             # --- Accuracy tracking (when mock provides ground truth) ---
             truth_tag = ""

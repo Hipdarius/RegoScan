@@ -115,6 +115,40 @@ def test_feature_vector_swir_combined_mode():
     assert feat.shape == (N_SPEC + N_AS7265X + N_SWIR + N_LED + 1,)
 
 
+def test_feature_vector_for_model_zero_fills_missing_swir_full():
+    payload = _base_payload()
+    frame, _ = bridge.validate_frame(json.dumps(payload))
+    feat = bridge.build_feature_vector_for_model(frame, N_SPEC + N_SWIR + N_LED + 1)
+    assert feat.shape == (N_SPEC + N_SWIR + N_LED + 1,)
+    np.testing.assert_allclose(feat[N_SPEC : N_SPEC + N_SWIR], 0.0)
+
+
+def test_feature_vector_for_model_zero_fills_missing_swir_combined():
+    payload = _base_payload(with_as7=True)
+    frame, _ = bridge.validate_frame(json.dumps(payload))
+    feat = bridge.build_feature_vector_for_model(
+        frame,
+        N_SPEC + N_AS7265X + N_SWIR + N_LED + 1,
+    )
+    assert feat.shape == (N_SPEC + N_AS7265X + N_SWIR + N_LED + 1,)
+    swir_start = N_SPEC + N_AS7265X
+    np.testing.assert_allclose(feat[swir_start : swir_start + N_SWIR], 0.0)
+
+
+def test_feature_vector_for_model_drops_swir_for_legacy_full():
+    payload = _base_payload(with_swir=True)
+    frame, _ = bridge.validate_frame(json.dumps(payload))
+    feat = bridge.build_feature_vector_for_model(frame, N_SPEC + N_LED + 1)
+    assert feat.shape == (N_SPEC + N_LED + 1,)
+
+
+def test_feature_vector_for_model_drops_swir_for_legacy_combined():
+    payload = _base_payload(with_as7=True, with_swir=True)
+    frame, _ = bridge.validate_frame(json.dumps(payload))
+    feat = bridge.build_feature_vector_for_model(frame, N_SPEC + N_AS7265X + N_LED + 1)
+    assert feat.shape == (N_SPEC + N_AS7265X + N_LED + 1,)
+
+
 def test_feature_vector_canonical_order():
     """Verify [spec | as7 | swir | led | lif] order."""
     payload = _base_payload(with_as7=True, with_swir=True)
@@ -159,3 +193,16 @@ def test_frame_to_measurement_preserves_swir():
     assert m.swir == [0.4, 0.5]
     assert m.as7265x == [0.3] * N_AS7265X
     assert m.sensor_mode == "combined"
+
+
+def test_frame_to_measurement_zero_fills_missing_swir():
+    payload = _base_payload()
+    frame, _ = bridge.validate_frame(json.dumps(payload))
+    m = bridge.frame_to_measurement(
+        frame,
+        sample_id="TEST",
+        packing_density="medium",
+        predicted_class="mixed",
+        predicted_ilmenite=0.1,
+    )
+    assert m.swir == [0.0] * N_SWIR

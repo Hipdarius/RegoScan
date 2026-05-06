@@ -15,6 +15,7 @@ Both share the same input vector and the same fit/predict surface so
 from __future__ import annotations
 
 import pickle
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -29,6 +30,7 @@ from vera.preprocess import (
     savgol_smooth,
     standardise,
 )
+from vera.schema import N_SWIR
 
 # ---------------------------------------------------------------------------
 # Feature assembly
@@ -46,17 +48,22 @@ def build_baseline_features(
     bundle : NumpyBundle
         Pre-extracted measurement arrays.
     sensor_mode : str
-        ``"full"`` (default) — C12880MA 288-ch spectrum + LED + LIF + expert.
-        ``"multispectral"`` — AS7265x 18-ch + LED + LIF (no expert features).
-        ``"combined"`` — full spectrum + AS7265x + LED + LIF + expert.
+        ``"full"`` (default) — C12880MA spectrum + SWIR + LED + LIF + expert.
+        ``"multispectral"`` — AS7265x + SWIR + LED + LIF (no expert features).
+        ``"combined"`` — full spectrum + AS7265x + SWIR + LED + LIF + expert.
     """
     leds = bundle.leds
     lif = bundle.lif.reshape(-1, 1)
+    swir = (
+        bundle.swir
+        if bundle.swir is not None
+        else np.zeros((bundle.spectra.shape[0], N_SWIR), dtype=np.float64)
+    )
 
     if sensor_mode == "full":
         spec_smoothed = savgol_smooth(bundle.spectra, window_length=11, polyorder=3)
         expert = compute_features(spec_smoothed, leds, bundle.lif)
-        return np.concatenate([spec_smoothed, leds, lif, expert], axis=1)
+        return np.concatenate([spec_smoothed, swir, leds, lif, expert], axis=1)
 
     # Retrieve AS7265x channels; the field is added by the datasets agent.
     as7265x: np.ndarray = getattr(bundle, "as7265x", None)  # type: ignore[assignment]
@@ -67,14 +74,14 @@ def build_baseline_features(
         )
 
     if sensor_mode == "multispectral":
-        # 18 AS7265x channels + 12 LED + 1 LIF = 31 raw features.
-        # No Savitzky–Golay or expert features — too few channels.
-        return np.concatenate([as7265x, leds, lif], axis=1)
+        # 18 AS7265x channels + 2 SWIR + 12 LED + 1 LIF = 33 raw features.
+        # No Savitzky-Golay or expert features - too few channels.
+        return np.concatenate([as7265x, swir, leds, lif], axis=1)
 
     if sensor_mode == "combined":
         spec_smoothed = savgol_smooth(bundle.spectra, window_length=11, polyorder=3)
         expert = compute_features(spec_smoothed, leds, bundle.lif)
-        return np.concatenate([spec_smoothed, as7265x, leds, lif, expert], axis=1)
+        return np.concatenate([spec_smoothed, as7265x, swir, leds, lif, expert], axis=1)
 
     raise ValueError(f"Unknown sensor_mode: {sensor_mode!r}")
 
@@ -145,6 +152,12 @@ def save_baseline(bundle: BaselineBundle, path: str | Path) -> Path:
 
 
 def load_baseline(path: str | Path) -> BaselineBundle:
+    warnings.warn(
+        "Loading sklearn pickle artifacts can execute code. Only load baseline "
+        "models produced by this project from trusted paths.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
     with open(path, "rb") as fh:
         return pickle.load(fh)
 

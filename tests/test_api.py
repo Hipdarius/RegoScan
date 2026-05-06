@@ -63,6 +63,45 @@ def test_meta_includes_class_names_and_wavelengths(client):
 
 
 # ---------------------------------------------------------------------------
+# Feature assembly contract
+# ---------------------------------------------------------------------------
+
+
+def test_api_feature_assembly_uses_canonical_full_order():
+    from apps.api import SpectrumRequest, _features_from_request
+    from vera.schema import N_LED, N_SPEC, N_SWIR, get_feature_count
+
+    req = SpectrumRequest(
+        spec=[0.1] * N_SPEC,
+        swir=[0.2] * N_SWIR,
+        led=[0.3] * N_LED,
+        lif_450lp=0.4,
+    )
+
+    features = _features_from_request(req, "full")
+    assert features.shape == (get_feature_count("full"),)
+    assert features[N_SPEC : N_SPEC + N_SWIR].tolist() == pytest.approx([0.2, 0.2])
+    assert features[-1] == pytest.approx(0.4)
+
+
+def test_api_feature_assembly_requires_combined_channels():
+    from fastapi import HTTPException
+
+    from apps.api import SpectrumRequest, _features_from_request
+    from vera.schema import N_LED, N_SPEC, N_SWIR
+
+    req = SpectrumRequest(
+        spec=[0.1] * N_SPEC,
+        swir=[0.2] * N_SWIR,
+        led=[0.3] * N_LED,
+        lif_450lp=0.4,
+    )
+
+    with pytest.raises(HTTPException, match="requires as7265x"):
+        _features_from_request(req, "combined")
+
+
+# ---------------------------------------------------------------------------
 # POST /api/predict/demo
 # ---------------------------------------------------------------------------
 
