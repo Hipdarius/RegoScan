@@ -1,10 +1,11 @@
-// ─────────────────────────────────────────────────────────────────
-// Wire Protocol Serializer — Implementation
+// ---------------------------------------------------------------------------
+// Wire Protocol Serializer - Implementation
 //
-// Encodes ScanFrame as a single-line JSON object and provides
-// sensor utility functions (temperature reading, reflectance
-// normalization). Zero heap allocation throughout.
-// ─────────────────────────────────────────────────────────────────
+// Encodes ScanFrame as a single-line JSON object and provides sensor utility
+// functions (temperature reading, reflectance normalization). The serializer
+// streams directly to Print, so it does not allocate a JSON document on heap or
+// stack.
+// ---------------------------------------------------------------------------
 
 #include "Protocol.h"
 #include <Arduino.h>
@@ -12,51 +13,55 @@
 
 namespace vera {
 
+namespace {
+
+size_t printFloatArray(Print& stream, const float* values, uint16_t count) {
+    size_t bytes = stream.print('[');
+    for (uint16_t i = 0; i < count; i++) {
+        if (i > 0) {
+            bytes += stream.print(',');
+        }
+        bytes += stream.print(values[i], 6);
+    }
+    bytes += stream.print(']');
+    return bytes;
+}
+
+}  // namespace
+
 size_t transmitFrame(const ScanFrame& frame, Print& stream) {
-    JsonDocument doc;
+    size_t bytes = 0;
 
-    doc["v"]                   = WIRE_PROTOCOL_VERSION;
-    doc["integration_time_ms"] = frame.integration_time_ms;
-    doc["ambient_temp_c"]      = frame.ambient_temp_c;
+    bytes += stream.print('{');
+    bytes += stream.print("\"v\":");
+    bytes += stream.print(static_cast<unsigned int>(WIRE_PROTOCOL_VERSION));
+    bytes += stream.print(",\"integration_time_ms\":");
+    bytes += stream.print(static_cast<unsigned int>(frame.integration_time_ms));
+    bytes += stream.print(",\"ambient_temp_c\":");
+    bytes += stream.print(frame.ambient_temp_c, 3);
 
-    // Spectral array — 288 floats
-    JsonArray spec = doc["spec"].to<JsonArray>();
-    for (uint16_t i = 0; i < N_SPEC_PIXELS; i++) {
-        spec.add(frame.spec[i]);
-    }
+    bytes += stream.print(",\"spec\":");
+    bytes += printFloatArray(stream, frame.spec, N_SPEC_PIXELS);
 
-    // Per-LED reflectance — 12 floats
-    JsonArray led = doc["led"].to<JsonArray>();
-    for (uint8_t j = 0; j < N_LEDS; j++) {
-        led.add(frame.led[j]);
-    }
+    bytes += stream.print(",\"led\":");
+    bytes += printFloatArray(stream, frame.led, N_LEDS);
 
-    // LIF fluorescence channel
-    doc["lif_450lp"] = frame.lif_450lp;
+    bytes += stream.print(",\"lif_450lp\":");
+    bytes += stream.print(frame.lif_450lp, 6);
 
-    // SWIR InGaAs photodiode (only when ADS1115 is present)
     if (frame.has_swir) {
-        JsonArray swir = doc["swir"].to<JsonArray>();
-        for (uint8_t k = 0; k < N_SWIR_CHANNELS; k++) {
-            swir.add(frame.swir[k]);
-        }
+        bytes += stream.print(",\"swir\":");
+        bytes += printFloatArray(stream, frame.swir, N_SWIR_CHANNELS);
     }
 
-    // AS7265x 18-band multispectral (only when sensor is present)
     if (frame.has_as7265x) {
-        JsonArray as7 = doc["as7"].to<JsonArray>();
-        for (uint8_t k = 0; k < N_AS7265X_BANDS; k++) {
-            as7.add(frame.as7265x[k]);
-        }
+        bytes += stream.print(",\"as7\":");
+        bytes += printFloatArray(stream, frame.as7265x, N_AS7265X_BANDS);
     }
 
-    // Serialize as a single line
-    size_t bytes = serializeJson(doc, stream);
-    if (bytes == 0) {
-        return 0;  // serialization failure (buffer overflow)
-    }
-    stream.println();
-    return bytes + 2;  // +2 for \r\n from println()
+    bytes += stream.print('}');
+    bytes += stream.println();
+    return bytes;
 }
 
 float readTemperatureC() {
@@ -69,9 +74,9 @@ float readTemperatureC() {
     // Vout = Vcc * R_ntc / (R_series + R_ntc)
     // => R_ntc = R_series * Vout / (Vcc - Vout)
     //
-    // Guard against division by zero when voltage ≈ 3.3 V
+    // Guard against division by zero when voltage is close to 3.3 V.
     if (voltage >= 3.29f) {
-        return 150.0f;  // sensor shorted or disconnected — return sentinel
+        return 150.0f;  // sensor shorted or disconnected - return sentinel
     }
     const float r_ntc = static_cast<float>(THERM_SERIES_OHM) * voltage / (3.3f - voltage);
 
@@ -85,16 +90,16 @@ float readTemperatureC() {
 }
 
 float normalizeReflectance(uint16_t raw, uint16_t dark, uint16_t white) {
-    // Guard: if white == dark, the reference is degenerate
+    // Guard: if white == dark, the reference is degenerate.
     if (white == dark) {
         return 0.0f;
     }
 
-    const float numerator   = static_cast<float>(raw)   - static_cast<float>(dark);
-    const float denominator = static_cast<float>(white)  - static_cast<float>(dark);
+    const float numerator = static_cast<float>(raw) - static_cast<float>(dark);
+    const float denominator = static_cast<float>(white) - static_cast<float>(dark);
     float result = numerator / denominator;
 
-    // Clamp to [0.0, 1.5]
+    // Clamp to [0.0, 1.5].
     if (result < 0.0f) {
         result = 0.0f;
     } else if (result > 1.5f) {

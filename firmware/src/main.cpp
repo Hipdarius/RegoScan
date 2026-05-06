@@ -182,13 +182,15 @@ void loop() {
     // ── BROADBAND: all LEDs on, read white reference ────────────
     // Accumulate N_AVERAGES readings then average.
     case State::BROADBAND: {
-        if (stateElapsedMs() < LED_SETTLE_MS) break;  // wait for LEDs
-        if (g_avg_idx == 0 && stateElapsedMs() >= LED_SETTLE_MS) {
-            // First entry after settle: turn LEDs on and come back
+        static bool broadband_started = false;
+        if (!broadband_started) {
             g_light.allLedsOn();
-            // Small re-enter to ensure LEDs are stable before first read
-            if (stateElapsedMs() < LED_SETTLE_MS + 1) break;
+            g_avg_idx = 0;
+            broadband_started = true;
+            enterState(State::BROADBAND);
+            break;
         }
+        if (stateElapsedMs() < LED_SETTLE_MS) break;  // wait for LEDs
 
         uint16_t tmp[N_SPEC_PIXELS];
         g_spec.readSpectrum(tmp);
@@ -200,6 +202,7 @@ void loop() {
             g_light.allOff();
             g_led_idx = 0;
             g_avg_idx = 0;
+            broadband_started = false;
             enterState(State::MULTISPECTRAL);
         }
         break;
@@ -224,27 +227,27 @@ void loop() {
     // ── NARROWBAND: cycle through 12 LEDs one at a time ─────────
     // For each LED, accumulate N_AVERAGES readings then average.
     case State::NARROWBAND: {
-        if (stateElapsedMs() < LED_SETTLE_MS) break;
-
-        // On first averaging iteration for this LED, turn it on
-        if (g_avg_idx == 0) {
+        static bool led_selected = false;
+        if (!led_selected) {
             g_light.selectLed(g_led_idx);
-            // Re-enter to allow settle time after selecting LED
+            g_avg_idx = 0;
+            led_selected = true;
             enterState(State::NARROWBAND);
             break;
         }
+        if (stateElapsedMs() < LED_SETTLE_MS) break;
 
         uint16_t tmp[N_SPEC_PIXELS];
         g_spec.readSpectrum(tmp);
         accumulateSpectrum(g_narrow_acc[g_led_idx], tmp);
         g_avg_idx++;
 
-        if (g_avg_idx > N_AVERAGES) {
-            // g_avg_idx started at 1 after LED select, so > not >=
+        if (g_avg_idx >= N_AVERAGES) {
             finalizeSpectrum(g_narrow_raw[g_led_idx], g_narrow_acc[g_led_idx]);
             g_light.allOff();
             g_led_idx++;
             g_avg_idx = 0;
+            led_selected = false;
 
             if (g_led_idx < N_LEDS) {
                 enterState(State::NARROWBAND);
@@ -368,11 +371,14 @@ void loop() {
 
     // ── LIF: 405 nm laser → photodiode ──────────────────────────
     // Accumulate N_AVERAGES readings then average.
-    case State::LIF:
-        if (stateElapsedMs() == 0) {
+    case State::LIF: {
+        static bool lif_started = false;
+        if (!lif_started) {
             g_light.laserOn();
             g_avg_idx = 0;
             g_lif_acc = 0;
+            lif_started = true;
+            enterState(State::LIF);
             break;
         }
         if (stateElapsedMs() < LASER_WARMUP_MS) break;
@@ -383,9 +389,11 @@ void loop() {
         if (g_avg_idx >= N_AVERAGES) {
             g_lif_raw = static_cast<uint16_t>(g_lif_acc / N_AVERAGES);
             g_light.laserOff();
+            lif_started = false;
             enterState(State::TRANSMIT);
         }
         break;
+    }
 
     // ── TRANSMIT: normalize, pack, serialize ────────────────────
     case State::TRANSMIT: {
