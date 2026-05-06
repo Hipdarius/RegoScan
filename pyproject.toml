@@ -17,7 +17,7 @@ dependencies = [
     "matplotlib>=3.8",
 
     "onnx>=1.15",
-    "requests>=2.31",
+    "requests>=2.33.1",
     "tqdm>=4.66",
 ]
 
