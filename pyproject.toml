@@ -14,7 +14,7 @@ dependencies = [
     "scikit-learn>=1.4",
     "pydantic>=2.5",
     "torch>=2.2",
-    "matplotlib>=3.8",
+    "matplotlib>=3.10.9",
 
     "onnx>=1.15",
     "requests>=2.31",
