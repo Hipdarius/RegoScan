@@ -5,7 +5,7 @@ Fuerscher 2027. Until then, every "polish pass" should walk this list.
 
 ## Pre-release
 
-- [ ] `make lint` clean (Python ruff + web `next lint`)
+- [ ] `make lint` clean (Python ruff + web `npm run lint`)
 - [ ] `make test` clean (214+ tests, 0 skipped)
 - [ ] `make typecheck` clean (`tsc --noEmit`)
 - [ ] `cd firmware && pio run` succeeds

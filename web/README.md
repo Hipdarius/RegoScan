@@ -1,6 +1,6 @@
 # VERA Web — Mission Console
 
-Next.js 14 + Tailwind + Recharts + Framer Motion frontend backed by an
+Next.js 16 + Tailwind + Recharts + Framer Motion frontend backed by an
 ONNX/FastAPI Python serverless function. Deploys to Vercel as a single
 project.
 
@@ -8,7 +8,7 @@ project.
 
 ```
 web/
-├── app/                  # Next.js 14 app router
+├── app/                  # Next.js 16 app router
 │   ├── layout.tsx
 │   ├── page.tsx          # The mission console page
 │   └── globals.css
@@ -46,7 +46,7 @@ uv run uvicorn apps.api:app --reload --port 8000
 
 # Terminal B — Next.js dev server (from repo root)
 cd web
-npm install
+npm ci
 NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000 npm run dev
 ```
 
@@ -130,7 +130,7 @@ vercel
 
 Vercel will:
 
-1. Run `npm install` and `next build`
+1. Run `npm ci` and `next build`
 2. Build the `api/predict.py` Python function with the deps in
    `api/requirements.txt`
 3. Bundle `api/model.onnx` into the function (configured via
@@ -169,7 +169,7 @@ every PR gets its own preview URL.
 | Symptom | Fix |
 | --- | --- |
 | `model.onnx missing at /var/task/api/model.onnx` | Re-run `cp runs/cnn_v2/model.onnx web/api/model.onnx`, commit, redeploy. |
-| CORS errors in dev | Set `NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000` (the FastAPI app already serves `Access-Control-Allow-Origin: *`). |
+| CORS errors in dev | Set `NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000` and add the frontend origin to `VERA_CORS_ORIGINS` if you are not using localhost. |
 | `next build` fails on a Tailwind class | Check `tailwind.config.ts` — only color utilities support `/<opacity>` modifiers, not custom shadows. |
 | Python function exceeds 50 MB | The default 1D ResNet ONNX is 2.7 MB — well under the limit. If you swap in a much larger model, prune unused deps in `api/requirements.txt` (e.g. drop `pydantic` for `dataclasses`). |
 

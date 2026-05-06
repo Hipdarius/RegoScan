@@ -4,6 +4,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -23,7 +27,7 @@ jobs:
       - run: uv run ruff check src/ apps/ scripts/ tests/
 
   lint-web:
-    name: Lint · Web (next lint)
+    name: Lint · Web (eslint)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -58,7 +62,20 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: cd web && npm ci && npx tsc --noEmit
+      - run: cd web && npm ci && npm run typecheck
+
+  audit-web:
+    name: Audit · Web production deps
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: cd web && npm ci && npm audit --omit=dev --audit-level=moderate
 
   firmware-build:  # build firmware/ for the ESP32-S3 target via PlatformIO
     name: Build · firmware (PlatformIO)

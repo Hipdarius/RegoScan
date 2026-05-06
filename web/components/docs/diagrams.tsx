@@ -157,7 +157,7 @@ export function LayerStack() {
     {
       n: "L5",
       name: "Console",
-      impl: "Next.js 14 · React 18 · App Router",
+      impl: "Next.js 16 · React 18 · App Router",
       desc: "Spectrum, posterior, ilmenite gauge, mission log",
       out: "browser → human",
     },

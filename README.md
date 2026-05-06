@@ -10,7 +10,7 @@
 
 [![CI](https://github.com/Hipdarius/VERA/actions/workflows/ci.yml/badge.svg)](https://github.com/Hipdarius/VERA/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white)](pyproject.toml)
-[![Next.js 14](https://img.shields.io/badge/web-Next.js_14-000?logo=nextdotjs&logoColor=white)](web)
+[![Next.js 16](https://img.shields.io/badge/web-Next.js_16-000?logo=nextdotjs&logoColor=white)](web)
 [![ESP32](https://img.shields.io/badge/firmware-ESP32--S3-e7352c?logo=espressif&logoColor=white)](firmware)
 [![ONNX Runtime](https://img.shields.io/badge/inference-ONNX_Runtime-8b5cf6)](https://onnxruntime.ai)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22d3ee)](LICENSE)
@@ -136,7 +136,7 @@ ilmenite discrimination. Adding it lifted cross-seed generalisation from
 │                                                                       │
 │  HARDWARE LAYER             INFERENCE LAYER         INTERFACE LAYER   │
 │  ┌────────────────┐    ┌─────────────────────┐  ┌──────────────────┐  │
-│  │ ESP32-S3 MCU   │    │ ONNX Runtime        │  │ Next.js 14       │  │
+│  │ ESP32-S3 MCU   │    │ ONNX Runtime        │  │ Next.js 16       │  │
 │  │ C12880MA  ×288 │───►│ 1D ResNet  ~280 K   │─►│ Recharts         │  │
 │  │ AS7265x   ×18  │    │ Softmax + Regression│  │ Framer Motion    │  │
 │  │ InGaAs    ×2   │    │ < 5 ms / inference  │  │ Tailwind CSS     │  │
@@ -175,7 +175,7 @@ IDLE  →  DARK  →  ACQUIRE_VIS  →  ACQUIRE_AS7  →  ACQUIRE_SWIR  →  ACQ
 
 **Design constraints**
 - **No `delay()`** in the main loop — only `delayMicroseconds()` for sensor clock bit-banging
-- **No heap allocation** — all buffers are statically sized (`constexpr`, `StaticJsonDocument`)
+- **No heap allocation** — all buffers are statically sized and JSON is streamed directly to `Serial`
 - **N=8 averaging** per SWIR LED step for SNR
 - **Graceful degradation** — if the AS7265x is absent, the multispectral state is skipped
 - **Adaptive integration** — targets the 95th-percentile pixel at ~50 % of ADC range
@@ -311,7 +311,7 @@ vera/
 │
 ├─ apps/api.py               FastAPI service (5 endpoints)
 │
-├─ web/                      Next.js 14 mission console
+├─ web/                      Next.js 16 mission console
 │  ├─ app/                   Routes: /, /about, /architecture, /methods
 │  ├─ components/            Hero, MissionPanel, gauge, chart, NavBar, DocPage
 │  └─ lib/                   API client + TypeScript types

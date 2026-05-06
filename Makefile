@@ -4,7 +4,7 @@ help:
 	@echo "VERA — make targets"
 	@echo ""
 	@echo "  test            run pytest"
-	@echo "  lint            ruff check (Python) + next lint (web)"
+	@echo "  lint            ruff check (Python) + eslint (web)"
 	@echo "  lint-fix        ruff check --fix"
 	@echo "  format          ruff format (rewrites in-place)"
 	@echo "  typecheck       tsc --noEmit (web)"
@@ -36,7 +36,7 @@ typecheck:
 	cd web && npx tsc --noEmit
 
 train:
-	uv run python -m vera.train --model cnn --data data/synth_v1.csv --epochs 50 --out runs/cnn_v2/ --cv-folds 5
+	uv run python -m vera.train --model cnn --data data/synth_v1.csv --epochs 50 --out runs/cnn_v2/
 
 data-gen:
 	uv run python scripts/generate_synth_dataset.py --n-samples 400 --measurements-per-sample 10 --out data/synth_v1.csv
@@ -51,5 +51,4 @@ serve-web:
 	cd web && npm run dev
 
 clean:
-	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-	rm -rf .pytest_cache .ruff_cache
+	uv run python scripts/clean.py
