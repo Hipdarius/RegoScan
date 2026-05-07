@@ -14,7 +14,7 @@
 [![ESP32](https://img.shields.io/badge/firmware-ESP32--S3-e7352c?logo=espressif&logoColor=white)](firmware)
 [![ONNX Runtime](https://img.shields.io/badge/inference-ONNX_Runtime-8b5cf6)](https://onnxruntime.ai)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22d3ee)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-220_passing-34d399)](tests)
+[![Tests](https://img.shields.io/badge/tests-221_passing-34d399)](tests)
 
 ---
 
@@ -67,7 +67,7 @@ photons to pixels.
 - **Non-blocking firmware.** No `delay()`, no heap, all buffers `constexpr`,
   and streamed JSON output. Adaptive integration time targets the
   95th-percentile pixel via a counting-sort histogram (O(N + 4096), zero heap).
-- **220 passing tests.** Unit, property, end-to-end. Includes the firmware
+- **221 passing tests.** Unit, property, end-to-end. Includes the firmware
   bridge, Hapke roundtrip, calibration math, OOD thresholds, and active learning.
 
 ---
@@ -84,7 +84,7 @@ photons to pixels.
 | SAM baseline | **16.8 %** | ≈ chance for k = 6 |
 | CNN improvement over SAM | **+82.8 pp** | multimodal vs. spec-only |
 | Active-learning lift | **≈ 2× labels-to-target** | vs. random sampling |
-| Tests | **220 passing** | 1 optional live-model demo skip when no model artefact is loaded |
+| Tests | **221 passing** | 1 optional live-model demo skip when no model artefact is loaded |
 
 ---
 
@@ -330,7 +330,7 @@ vera/
 │  ├─ Protocol.{h,cpp}       Streamed JSON protocol + thermistor
 │  └─ Config.h               Pin assignments, calibration constants
 │
-├─ tests/                    220 passing tests across 15 modules
+├─ tests/                    221 passing tests across 15 modules
 ├─ scripts/                  mock_esp32, bridge, clean, ablate_mixing, build_tflite_micro
 ├─ docs/                     engineering-journal.md, paper-notes.md
 ├─ runs/                     Trained artefacts (model.onnx, meta.json)

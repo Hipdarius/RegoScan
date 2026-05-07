@@ -56,7 +56,7 @@ def test_predict_wrong_feature_count_raises():
     # Create a minimal mock engine that has the validation logic
     engine = MagicMock()
     engine._sensor_mode = "full"
-    engine._n_features = get_feature_count("full")  # 301
+    engine._n_features = get_feature_count("full")
 
     # Call the real predict method with wrong-sized input
 

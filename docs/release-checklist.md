@@ -6,7 +6,7 @@ Fuerscher 2027. Until then, every "polish pass" should walk this list.
 ## Pre-release
 
 - [ ] `make lint` clean (Python ruff + web `npm run lint`)
-- [ ] `make test` clean (220+ passing tests; optional live-model demo may skip without a loaded model artefact)
+- [ ] `make test` clean (221+ passing tests; optional live-model demo may skip without a loaded model artefact)
 - [ ] `make typecheck` clean (`tsc --noEmit`)
 - [ ] `cd firmware && pio run` succeeds
 - [ ] Engineering journal current — every commit since the last

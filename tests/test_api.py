@@ -49,7 +49,13 @@ def test_meta_includes_sensor_mode(client):
     assert resp.status_code == 200
     body = resp.json()
     assert "sensor_mode" in body
-    assert body["sensor_mode"] in ("full", "multispectral", "combined")
+    assert body["sensor_mode"] in (
+        "full",
+        "multispectral",
+        "combined",
+        "legacy_full",
+        "legacy_combined",
+    )
     assert body["schema_version"] == SCHEMA_VERSION
 
 
@@ -99,6 +105,23 @@ def test_api_feature_assembly_requires_combined_channels():
 
     with pytest.raises(HTTPException, match="requires as7265x"):
         _features_from_request(req, "combined")
+
+
+def test_api_feature_assembly_supports_legacy_full_model_width():
+    from apps.api import N_FEATURES_LEGACY_FULL, SpectrumRequest, _features_from_request
+    from vera.schema import N_LED, N_SPEC, N_SWIR
+
+    req = SpectrumRequest(
+        spec=[0.1] * N_SPEC,
+        swir=[0.2] * N_SWIR,
+        led=[0.3] * N_LED,
+        lif_450lp=0.4,
+    )
+
+    features = _features_from_request(req, "full", N_FEATURES_LEGACY_FULL)
+    assert features.shape == (N_FEATURES_LEGACY_FULL,)
+    assert features[N_SPEC : N_SPEC + N_SWIR].tolist() == pytest.approx([0.3, 0.3])
+    assert features[-1] == pytest.approx(0.4)
 
 
 # ---------------------------------------------------------------------------

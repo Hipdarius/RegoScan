@@ -34,11 +34,15 @@ if str(SRC) not in sys.path:
 from vera.schema import (  # noqa: E402
     MINERAL_CLASSES,
     N_AS7265X,
+    N_LED,
     N_SPEC,
     N_SWIR,
     WAVELENGTHS,
     get_feature_count,
 )
+
+N_FEATURES_LEGACY_FULL = N_SPEC + N_LED + 1
+N_FEATURES_LEGACY_COMBINED = N_SPEC + N_AS7265X + N_LED + 1
 
 # ---------------------------------------------------------------------------
 # Endmember resolution
@@ -89,6 +93,25 @@ def _softmax(x: np.ndarray) -> np.ndarray:
     """Numerically stable softmax over a 1-D logit vector."""
     e = np.exp(x - np.max(x))
     return e / e.sum()
+
+
+def _shape_int(value: Any) -> int | None:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
+
+
+def _sensor_mode_for_features(n_features: int, fallback: str) -> str:
+    """Infer the base sensor mode from an ONNX feature count."""
+    if n_features in (get_feature_count("full"), N_FEATURES_LEGACY_FULL):
+        return "full"
+    if n_features == get_feature_count("multispectral"):
+        return "multispectral"
+    if n_features in (get_feature_count("combined"), N_FEATURES_LEGACY_COMBINED):
+        return "combined"
+    return fallback
 
 
 class InferenceEngine:
@@ -142,13 +165,15 @@ class InferenceEngine:
             raise ValueError(
                 f"meta.json temperature must be positive, got {self._temperature}"
             )
-        self._n_features: int = get_feature_count(self._sensor_mode)
-
         self._session = ort.InferenceSession(
             str(self._path),
             providers=["CPUExecutionProvider"],
         )
-        self._input_name: str = self._session.get_inputs()[0].name
+        model_input = self._session.get_inputs()[0]
+        self._input_name: str = model_input.name
+        onnx_n_features = _shape_int(model_input.shape[-1]) if model_input.shape else None
+        self._n_features = onnx_n_features or get_feature_count(self._sensor_mode)
+        self._sensor_mode = _sensor_mode_for_features(self._n_features, self._sensor_mode)
 
         h = hashlib.sha256(self._path.read_bytes())
         self._sha256 = h.hexdigest()[:16]

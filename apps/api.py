@@ -60,6 +60,19 @@ from vera.schema import (  # noqa: E402
     get_feature_count,
 )
 
+N_FEATURES_FULL = get_feature_count("full")
+N_FEATURES_MULTISPECTRAL = get_feature_count("multispectral")
+N_FEATURES_COMBINED = get_feature_count("combined")
+N_FEATURES_LEGACY_FULL = N_SPEC + N_LED + 1
+N_FEATURES_LEGACY_COMBINED = N_SPEC + N_AS7265X + N_LED + 1
+_SUPPORTED_MODEL_FEATURE_COUNTS = {
+    N_FEATURES_FULL,
+    N_FEATURES_MULTISPECTRAL,
+    N_FEATURES_COMBINED,
+    N_FEATURES_LEGACY_FULL,
+    N_FEATURES_LEGACY_COMBINED,
+}
+
 # ---------------------------------------------------------------------------
 # Model location resolution
 # ---------------------------------------------------------------------------
@@ -126,6 +139,20 @@ def _cors_origins() -> list[str]:
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
     ]
+
+
+def _sensor_mode_for_features(n_features: int, fallback: str) -> str:
+    if n_features == N_FEATURES_COMBINED:
+        return "combined"
+    if n_features == N_FEATURES_MULTISPECTRAL:
+        return "multispectral"
+    if n_features == N_FEATURES_FULL:
+        return "full"
+    if n_features == N_FEATURES_LEGACY_COMBINED:
+        return "legacy_combined"
+    if n_features == N_FEATURES_LEGACY_FULL:
+        return "legacy_full"
+    return fallback
 
 
 app.add_middleware(
@@ -259,14 +286,33 @@ def _to_prediction(
     return payload
 
 
-def _features_from_request(req: SpectrumRequest, sensor_mode: str) -> np.ndarray:
-    """Build a feature vector for the loaded model's sensor mode."""
+def _features_from_request(
+    req: SpectrumRequest,
+    sensor_mode: str,
+    n_features: int | None = None,
+) -> np.ndarray:
+    """Build a feature vector for the loaded model's exact ONNX input width."""
+    n_features = n_features or get_feature_count(sensor_mode)
+    if n_features not in _SUPPORTED_MODEL_FEATURE_COUNTS:
+        raise HTTPException(
+            status_code=503,
+            detail=f"unsupported model feature count: {n_features}",
+        )
     parts: list[np.ndarray] = []
 
-    if sensor_mode in ("full", "combined"):
+    if n_features in (
+        N_FEATURES_FULL,
+        N_FEATURES_COMBINED,
+        N_FEATURES_LEGACY_FULL,
+        N_FEATURES_LEGACY_COMBINED,
+    ):
         parts.append(np.asarray(req.spec, dtype=np.float32))
 
-    if sensor_mode in ("multispectral", "combined"):
+    if n_features in (
+        N_FEATURES_MULTISPECTRAL,
+        N_FEATURES_COMBINED,
+        N_FEATURES_LEGACY_COMBINED,
+    ):
         if req.as7265x is None:
             raise HTTPException(
                 status_code=400,
@@ -274,12 +320,13 @@ def _features_from_request(req: SpectrumRequest, sensor_mode: str) -> np.ndarray
             )
         parts.append(np.asarray(req.as7265x, dtype=np.float32))
 
-    if req.swir is None:
-        raise HTTPException(
-            status_code=400,
-            detail=f"model sensor_mode={sensor_mode!r} requires swir values",
-        )
-    parts.append(np.asarray(req.swir, dtype=np.float32))
+    if n_features in (N_FEATURES_FULL, N_FEATURES_MULTISPECTRAL, N_FEATURES_COMBINED):
+        if req.swir is None:
+            raise HTTPException(
+                status_code=400,
+                detail=f"model sensor_mode={sensor_mode!r} requires swir values",
+            )
+        parts.append(np.asarray(req.swir, dtype=np.float32))
 
     parts.extend([
         np.asarray(req.led, dtype=np.float32),
@@ -287,12 +334,11 @@ def _features_from_request(req: SpectrumRequest, sensor_mode: str) -> np.ndarray
     ])
     features = np.concatenate(parts)
 
-    expected_count = get_feature_count(sensor_mode)
-    if features.shape[0] != expected_count:
+    if features.shape[0] != n_features:
         raise HTTPException(
             status_code=400,
             detail=(
-                f"expected {expected_count} features "
+                f"expected {n_features} features "
                 f"(model sensor_mode={sensor_mode}), got {features.shape[0]}"
             ),
         )
@@ -322,12 +368,16 @@ def meta() -> MetaResponse:
     sensor_mode = "full"
     as7265x_bands: list[int] | None = None
 
-    # If a model is loaded and exposes a sensor_mode attribute, use it
-    if _ENGINE is not None and hasattr(_ENGINE, "sensor_mode"):
-        sensor_mode = _ENGINE.sensor_mode  # type: ignore[attr-defined]
+    n_features = get_feature_count(sensor_mode)
+    if _ENGINE is not None:
+        sensor_mode = _sensor_mode_for_features(
+            _ENGINE.expected_features,
+            _ENGINE.sensor_mode,
+        )
+        n_features = _ENGINE.expected_features
 
     # Include AS7265x band wavelengths when the mode uses the triad sensor
-    if sensor_mode in ("multispectral", "combined"):
+    if sensor_mode in ("multispectral", "combined", "legacy_combined"):
         as7265x_bands = list(AS7265X_BANDS)
 
     return MetaResponse(
@@ -335,7 +385,7 @@ def meta() -> MetaResponse:
         class_names=list(MINERAL_CLASSES),
         wavelengths_nm=[float(w) for w in WAVELENGTHS],
         led_wavelengths_nm=list(LED_WAVELENGTHS_NM),
-        n_features_total=get_feature_count(sensor_mode),
+        n_features_total=n_features,
         model_loaded=_ENGINE is not None,
         model_sha256=_model_sha256(),
         model_run_dir=str(_RUN_DIR) if _RUN_DIR is not None else None,
@@ -348,7 +398,7 @@ def meta() -> MetaResponse:
 @app.post("/api/predict", response_model=PredictionResponse)
 def predict(req: SpectrumRequest) -> dict[str, Any]:
     engine = _require_engine()
-    features = _features_from_request(req, engine.sensor_mode)
+    features = _features_from_request(req, engine.sensor_mode, engine.expected_features)
     return _to_prediction(features)
 
 
@@ -361,6 +411,17 @@ def predict_demo(seed: int | None = None) -> dict[str, Any]:
     """
     engine = _require_engine()
     demo = synth_demo_features(seed=seed, sensor_mode=engine.sensor_mode)
+    demo_req = SpectrumRequest(
+        spec=demo["spec"].tolist(),
+        swir=demo["swir"].tolist() if demo.get("swir") is not None else None,
+        led=demo["led"].tolist(),
+        lif_450lp=float(demo["lif_450lp"]),
+        as7265x=(
+            demo["as7265x"].tolist()
+            if demo.get("as7265x") is not None
+            else None
+        ),
+    )
     extras: dict[str, Any] = {
         "spec": demo["spec"].tolist(),
         "led": demo["led"].tolist(),
@@ -375,7 +436,12 @@ def predict_demo(seed: int | None = None) -> dict[str, Any]:
     if "as7265x" in demo and demo["as7265x"] is not None:
         extras["as7265x"] = demo["as7265x"].tolist()
 
-    return _to_prediction(demo["features"], extras=extras)
+    features = _features_from_request(
+        demo_req,
+        engine.sensor_mode,
+        engine.expected_features,
+    )
+    return _to_prediction(features, extras=extras)
 
 
 @app.get("/api/endmembers")
