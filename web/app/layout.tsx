@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Chakra_Petch, Azeret_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { NavBar } from "@/components/NavBar";
+import { ScrollProgress } from "@/components/ScrollProgress";
+import { SmoothScroll } from "@/components/SmoothScroll";
 
 const fontDisplay = Chakra_Petch({
   subsets: ["latin"],
@@ -40,6 +42,8 @@ export default function RootLayout({
     >
       <body className="min-h-screen antialiased">
         <ThemeProvider>
+          <SmoothScroll />
+          <ScrollProgress />
           <div className="relative z-10">
             <NavBar />
             {children}
