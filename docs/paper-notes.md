@@ -131,3 +131,115 @@
 | **DRAFTED** | Prose written, needs review |
 | **FINAL** | Reviewed and publication-ready |
 
+---
+
+## Reference Library
+
+The list below is the working set of papers and datasheets cited by the
+codebase and the project website (`/about`, `/methods`). Each entry tags
+the part of VERA it informs. Append-only — additions go at the bottom
+with the date they enter the working set.
+
+### A. Mission rationale (why ISRU, why ilmenite)
+
+- **NASA (2020).** *Artemis Plan: NASA's Lunar Exploration Program Overview.*
+  NASA HQ, NP-2020-05-2853-HQ.
+  → Front matter / Introduction. Identifying high-FeO/TiO₂ deposits at the
+  south polar region is on the Artemis critical path.
+- **Sanders, G. B., Larson, W. E. (2013).** *Progress Made in Lunar In-Situ
+  Resource Utilization under NASA's Exploration Technology and Development
+  Program.* J. Aerospace Eng. 26(1), 5–17.
+  doi:10.1061/(ASCE)AS.1943-5525.0000208.
+  → Introduction. H₂ reduction of ilmenite at ≈ 900 °C as the cheapest
+  near-term oxygen route.
+
+### B. Lunar / planetary spectroscopy (why these wavelengths)
+
+- **Pieters, C. M., et al. (2009).** *The Moon Mineralogy Mapper (M³) on
+  Chandrayaan-1.* Current Science 96(4), 500–505.
+  → Background, Instrument design. 340–2500 nm coverage validates the
+  1-µm Fe²⁺ band as diagnostic; VERA's 340–1050 nm range is the
+  affordable handheld subset.
+- **Burns, R. G. (1993).** *Mineralogical Applications of Crystal Field
+  Theory*, 2nd ed. Cambridge University Press. ISBN 978-0521430777.
+  → Methods. Band positions for Fe²⁺ in olivine, pyroxene, ilmenite —
+  the basis for the parameterised endmember spectra in
+  `src/vera/synth.py`.
+- **Hapke, B. (1981).** *Bidirectional reflectance spectroscopy: 1.
+  Theory.* JGR 86(B4), 3039–3054.
+  doi:10.1029/JB086iB04p03039.
+  → Methods. Intimate-mixture model. The IMSA closed form gives the
+  algebraic r↔w roundtrip in `synth.hapke_mix` (exact to machine ε).
+- **Lommel & Seeliger (1887 / 1924).** *Photometric law for diffuse
+  reflectance.* Astronomische Nachrichten.
+  → Methods, Calibration. Off-normal viewing geometry correction in
+  `calibrate.lommel_seeliger`.
+- **Kruse, F. A., et al. (1993).** *The Spectral Image Processing System
+  (SIPS) — Interactive Visualization and Analysis of Imaging Spectrometer
+  Data.* Remote Sens. Environ. 44(2–3), 145–163.
+  doi:10.1016/0034-4257(93)90013-N.
+  → Validation. Spectral Angle Mapper. Used as both a paper-grade ablation
+  and as an OOD-disagreement signal for the four-state status field.
+
+### C. Sensor datasheets (why these channels)
+
+- **Hamamatsu Photonics (2021).** *C12880MA Mini-spectrometer datasheet
+  (KACC1226E).*
+  → Instrument design, Calibration. 288-channel CMOS detector.
+  Datasheet integration-time linearity range and dark-current vs
+  temperature curve set the C2/C3 correction stages.
+- **ams OSRAM (2019).** *AS7265x Smart Multi-Spectral Sensor System
+  datasheet.*
+  → Instrument design. The 18-channel triad. Centre wavelengths and
+  FWHMs feed the Gaussian bandpass simulator in `synth.as7_response`.
+
+### D. Machine learning (why this model)
+
+- **He, K., Zhang, X., Ren, S., Sun, J. (2016).** *Deep Residual Learning
+  for Image Recognition.* CVPR 2016. arXiv:1512.03385.
+  → Methods. Backbone. 1D ResNet over the spectral axis with three
+  stride-2 stages of (32, 64, 128) channels.
+- **Loshchilov, I., Hutter, F. (2019).** *Decoupled Weight Decay
+  Regularization.* ICLR 2019. arXiv:1711.05101.
+  → Methods. AdamW. Decoupling L2 from the gradient step is what makes
+  weight-decay tuning insensitive to learning rate.
+
+### E. Calibration & uncertainty
+
+- **Guo, C., Pleiss, G., Sun, Y., Weinberger, K. Q. (2017).** *On
+  Calibration of Modern Neural Networks.* ICML 2017. arXiv:1706.04599.
+  → Methods, Results. Temperature scaling and the 15-bin ECE estimator —
+  the basis of `vera.uncertainty.fit_temperature` and the ≤ 1.5 %
+  calibrated ECE figure.
+- **Hendrycks, D., Gimpel, K. (2017).** *A Baseline for Detecting
+  Misclassified and Out-of-Distribution Examples in Neural Networks.*
+  ICLR 2017. arXiv:1610.02136.
+  → Methods. Maximum-softmax-probability + entropy as OOD signals.
+  VERA thresholds the calibrated entropy at the held-out 95th percentile.
+
+### F. Active learning & ablation
+
+- **Settles, B. (2009).** *Active Learning Literature Survey.* Univ.
+  Wisconsin–Madison CS Tech. Report 1648.
+  → Methods, Validation. The uncertainty-sampling family — the entropy
+  and margin terms in `active_learning.acquisition_score` come from this
+  taxonomy.
+
+### G. Embedded deployment
+
+- **Jacobson, R., Dosovitskiy, A., et al. (2018).** *Quantization and
+  Training of Neural Networks for Efficient Integer-Arithmetic-Only
+  Inference.* CVPR 2018. arXiv:1712.05877.
+  → Methods. INT8 static QDQ quantization. The calibration-set sizing
+  rule (≥ 100 representative samples) drives the 256-sample calibration
+  set used in `vera.quantize`.
+- **David, R., et al. (2021).** *TensorFlow Lite Micro: Embedded Machine
+  Learning for TinyML Systems.* MLSys 2021. arXiv:2010.08678.
+  → Instrument design. TFLite Micro design constraints. Drive the
+  heap-free, static-buffer approach in `firmware/src` and the choice
+  of INT8 ONNX as the calibration source.
+
+> Append-only. New entries go at the bottom of the relevant subsection
+> with the date they enter the working set. Removing an entry is a
+> deliberate edit and must explain why in the commit message.
+
