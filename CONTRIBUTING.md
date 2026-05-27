@@ -15,8 +15,8 @@ Thank you for your interest in contributing to the VERA lunar mineral classifica
 
 ```bash
 # Clone the repo
-git clone https://github.com/your-org/vera.git
-cd vera
+git clone https://github.com/Hipdarius/VERA.git
+cd VERA
 
 # Install Python dependencies (includes dev extras)
 uv sync --all-extras
@@ -93,7 +93,7 @@ The spectral schema (`src/vera/schema.py`) defines the canonical column layout u
 
 - **Do not modify schema.py without bumping its version.**
 - Any column rename or reorder is a breaking change and requires a migration note in the PR description.
-- Column names use the `spec_000..spec_287` convention (see project memory for rationale).
+- Column names use the `spec_000..spec_287` convention (see the module docstring in `src/vera/schema.py` for rationale).
 
 ## Pull Request Checklist
 

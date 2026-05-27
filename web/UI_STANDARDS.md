@@ -37,6 +37,7 @@ borders (`border border-slate-700`), not drop shadows.
 ## Component Rules
 
 - No monolith files. Max ~120 lines per component.
-- Icons: `lucide-react` — sharp, technical icons only
-  (`Activity`, `Terminal`, `Crosshair`, `Cpu`, `Wifi`)
+- Icons: inline SVG only — no icon library. The console intentionally
+  avoids icons in numeric panels; if a glyph is needed (cyan dots,
+  status pips), draw it inline so the bundle stays lean.
 - All numeric telemetry in `font-mono` to prevent layout shift.
