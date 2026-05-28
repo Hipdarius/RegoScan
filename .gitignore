@@ -36,6 +36,10 @@ data/*.csv
 *.pt
 *.pth
 *.pkl
+# …but keep the deployed model that ships with the Vercel function.
+# vercel.json's `includeFiles` points at this exact path and the
+# serverless build fails without it.
+!web/api/model.onnx
 
 # Streamlit
 .streamlit/secrets.toml
