@@ -12,8 +12,6 @@ Example:
 import argparse
 import json
 import random
-import sys
-from dataclasses import asdict
 from pathlib import Path
 
 import numpy as np
@@ -25,21 +23,17 @@ from vera.datasets import (
     RegoscanSpectraDataset,
     sample_level_split,
     split_bundle,
-    to_bundle,
 )
 from vera.io_csv import read_measurements_csv
 from vera.models.cnn import RegoscanCNN, assert_input_size, count_params
 from vera.models.plsr import (
-    BaselineBundle,
     build_baseline_features,
     fit_baseline,
     save_baseline,
 )
 from vera.schema import (
-    INDEX_TO_CLASS,
     MINERAL_CLASSES,
     N_CLASSES,
-    N_FEATURES_TOTAL,
     get_feature_count,
 )
 
@@ -310,8 +304,9 @@ def run_cnn(args: argparse.Namespace) -> int:
 def _plot_training_history(history: list[dict[str, float]], out_path: Path) -> None:
     """Quick plot of the training curve."""
     import matplotlib.pyplot as plt
-    if not history: return
-    
+    if not history:
+        return
+
     epochs = [h["epoch"] for h in history]
     train_loss = [h["train_loss"] for h in history]
     val_acc = [h["top1_acc"] for h in history]

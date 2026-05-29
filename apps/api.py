@@ -25,7 +25,6 @@ code path for inference regardless of deployment target.
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import sys
 from pathlib import Path
@@ -52,18 +51,14 @@ from vera.schema import (  # noqa: E402
     LED_WAVELENGTHS_NM,
     MINERAL_CLASSES,
     N_AS7265X,
-    N_FEATURES_TOTAL,
     N_LED,
     N_SPEC,
     N_SWIR,
     SCHEMA_VERSION,
-    SENSOR_MODES,
-    SensorMode,
     SWIR_WAVELENGTHS_NM,
     WAVELENGTHS,
     get_feature_count,
 )
-
 
 # ---------------------------------------------------------------------------
 # Model location resolution
@@ -357,7 +352,7 @@ def endmembers() -> dict[str, Any]:
     try:
         return load_endmembers_payload()
     except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 # ---------------------------------------------------------------------------

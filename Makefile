@@ -1,11 +1,24 @@
-.PHONY: test lint train data-gen firmware-build serve-api serve-web clean
+.PHONY: test lint lint-fix format typecheck train data-gen firmware-build serve-api serve-web clean
 
 test:
 	uv run pytest tests/ -v
 
+# `lint` is what CI runs and what the contribution checklist demands —
+# only `ruff check` (rule violations). `format` is opt-in via `make
+# format` so the diff stays focused per PR. `lint-fix` runs the
+# safe-fix subset of `ruff check`.
 lint:
 	uv run ruff check src/ apps/ scripts/ tests/
-	uv run ruff format --check src/ apps/ scripts/ tests/
+	cd web && npm run lint -- --quiet
+
+lint-fix:
+	uv run ruff check --fix src/ apps/ scripts/ tests/
+
+format:
+	uv run ruff format src/ apps/ scripts/ tests/
+
+typecheck:
+	cd web && npx tsc --noEmit
 
 train:
 	uv run python -m vera.train --model cnn --data data/synth_v1.csv --epochs 50 --out runs/cnn_v2/ --cv-folds 5

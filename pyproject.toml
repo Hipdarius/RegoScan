@@ -55,6 +55,77 @@ filterwarnings = [
     "ignore::PendingDeprecationWarning",
 ]
 
+# Ruff. The Makefile already calls `ruff check` and `ruff format --check`;
+# this section gives those commands a project policy instead of running
+# under the floor of ruff defaults. Rules picked for noise floor: pyflakes
+# and pycodestyle errors only, plus import sorting (I) and a small set of
+# bug-bear lints. Style choices that conflict with established docstrings
+# or the project's preferred line-length stay disabled.
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = [
+    "runs",
+    "data",
+    ".pio",
+    "firmware/.pio",
+    "web/.next",
+    "web/node_modules",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort (import order)
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade — modern Python idioms
+    "RUF",  # ruff-specific catches
+]
+ignore = [
+    "E501",  # line too long — long lines in scientific code are
+             # frequently the most readable choice; the hard ceiling
+             # is line-length above, not this rule.
+    "B008",  # function call in default arg — false-positive on
+             # FastAPI's Depends().
+    "B905",  # zip() without strict= — ubiquitous in pre-3.10 numeric
+             # code where length is invariant by construction; flagging
+             # every site is noise. Re-enable once the scientific
+             # codebase has been audited for true length mismatches.
+    # Ambiguous-unicode rules. Greek letters (σ, μ, λ), the
+    # multiplication sign (×), and the en-dash (–) are the right
+    # symbols in spectroscopy / signal-processing prose. Forcing them
+    # to ASCII would degrade readability of the docstrings.
+    "RUF001", # ambiguous unicode in strings
+    "RUF002", # ambiguous unicode in docstrings
+    "RUF003", # ambiguous unicode in comments
+    "RUF046", # numpy.cast(int) — historically required for clarity even
+              # when the input is already integral; suppress until a
+              # focused refactor removes the redundant casts.
+    "RUF005", # list concat vs unpack — both are correct; team
+              # preference is concat for readability in test fixtures.
+    "RUF007", # itertools.pairwise vs zip(a, a[1:]) — equivalent.
+    "RUF059", # unused unpacked variable — flagged on intentional
+              # `_, x = pair` patterns where the discarded slot is
+              # documentation, not an oversight.
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Scripts use the sys.path-insert + import pattern to share modules
+# without a package install. The imports being below the path-insert
+# is the entire point.
+"scripts/*.py" = ["E402"]
+# Tests share the same pattern, plus they intentionally assert on the
+# bare `Exception` type when proving that any failure path raises
+# *something*. They also make heavy use of tuple-unpacking against
+# fixtures with more values than the test cares about, which trips
+# RUF059 — that's the right shape for table-driven tests.
+"tests/*.py" = ["B017", "E402", "RUF059"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
 [dependency-groups]
 dev = [
     "pytest>=8.0",

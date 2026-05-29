@@ -14,7 +14,6 @@ The accompanying test in ``tests/test_datasets.py`` fails loudly if any
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
 
 import numpy as np
 import pandas as pd
@@ -30,8 +29,7 @@ from vera.io_csv import (
     extract_spectra,
     extract_swir,
 )
-from vera.schema import AS7265X_COLS, N_AS7265X, N_SPEC, N_SWIR, SWIR_COLS, get_feature_count
-
+from vera.schema import AS7265X_COLS, SWIR_COLS
 
 # ---------------------------------------------------------------------------
 # Sample-level split
@@ -83,7 +81,7 @@ def sample_level_split(
     val_samples: list[str] = []
     test_samples: list[str] = []
 
-    for klass, sub in df.groupby("mineral_class", sort=True):
+    for _klass, sub in df.groupby("mineral_class", sort=True):
         samples = sorted(sub["sample_id"].unique().tolist())
         if not samples:
             continue
@@ -289,10 +287,10 @@ class RegoscanSpectraDataset(Dataset):
 
 
 __all__ = [
+    "NumpyBundle",
+    "RegoscanSpectraDataset",
     "SplitIndices",
     "sample_level_split",
-    "NumpyBundle",
-    "to_bundle",
     "split_bundle",
-    "RegoscanSpectraDataset",
+    "to_bundle",
 ]

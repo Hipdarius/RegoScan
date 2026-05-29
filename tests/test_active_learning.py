@@ -14,7 +14,6 @@ from vera.active_learning import (
     rank_pool,
 )
 
-
 # ---------------------------------------------------------------------------
 # Mocks
 # ---------------------------------------------------------------------------
@@ -24,7 +23,6 @@ def _engine_returning(*, class_idx: int, probs: list[float], entropy=None,
                      margin=None, confidence=None, status="nominal"):
     """Build an InferenceEngine mock with controllable predict() output."""
     p = np.asarray(probs, dtype=np.float64)
-    K = p.size
 
     if entropy is None:
         # Recompute entropy in nats so we get a realistic value

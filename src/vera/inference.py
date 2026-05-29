@@ -28,11 +28,12 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from vera.schema import (
+# noqa-after-block: the imports below must follow the path insert above
+# so that the in-source `vera` package resolves when this module is
+# imported from a runs/ artefact directory or from the Vercel function.
+from vera.schema import (  # noqa: E402
     MINERAL_CLASSES,
     N_AS7265X,
-    N_FEATURES_TOTAL,
-    N_LED,
     N_SPEC,
     N_SWIR,
     WAVELENGTHS,
@@ -235,7 +236,6 @@ def synth_demo_features(
         ``"combined"``      — 319 features (spec + as7265x + led + lif).
     """
     from vera.synth import (
-        Endmembers,
         fractions_for_class,
         load_endmembers,
         synth_measurement,
@@ -312,9 +312,9 @@ def load_endmembers_payload() -> dict[str, Any]:
 
 
 __all__ = [
+    "ENDMEMBER_CACHE_PATH",
     "InferenceEngine",
+    "load_endmembers_payload",
     "resolve_endmembers",
     "synth_demo_features",
-    "load_endmembers_payload",
-    "ENDMEMBER_CACHE_PATH",
 ]

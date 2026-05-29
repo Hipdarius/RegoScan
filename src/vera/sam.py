@@ -34,7 +34,6 @@ import numpy as np
 
 from .schema import MINERAL_CLASSES
 
-
 # ---------------------------------------------------------------------------
 # Core SAM
 # ---------------------------------------------------------------------------
@@ -177,16 +176,17 @@ def build_classifier_from_endmembers(
     fraction-weighted mean of the 5 pures, which is what a uniformly
     sampled "mixed" measurement would average to.
     """
-    # Accept either a dict-like or our Endmembers dataclass
+    # Accept either a dict-like or our Endmembers dataclass. The
+    # endmembers may carry their own `names`, but we ignore them here
+    # and use the canonical training-time class order below — keeping
+    # the SAM/CNN class indices aligned for the OOD-disagreement signal.
     if hasattr(endmembers, "spectra"):
         spectra = np.asarray(endmembers.spectra, dtype=np.float64)
-        names = list(endmembers.names) if hasattr(endmembers, "names") else None
     else:
         spectra = np.stack([
             np.asarray(endmembers[n], dtype=np.float64)
             for n in ("ilmenite", "olivine", "pyroxene", "anorthite", "glass_agglutinate")
         ])
-        names = None
 
     # Append a "mixed" reference as the simple mean.
     mixed = spectra.mean(axis=0, keepdims=True)
