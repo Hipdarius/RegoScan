@@ -18,7 +18,6 @@ from vera.preprocess import (
 )
 from vera.schema import N_SPEC, WAVELENGTHS
 
-
 # ---------------------------------------------------------------------------
 # reflectance_normalise
 # ---------------------------------------------------------------------------

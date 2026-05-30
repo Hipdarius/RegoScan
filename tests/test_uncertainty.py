@@ -7,8 +7,6 @@ import pytest
 
 from vera.uncertainty import (
     BORDERLINE_MARGIN,
-    ENTROPY_OOD_THRESHOLD,
-    LOW_CONF_THRESHOLD,
     OOD_THRESHOLD,
     UncertaintyReport,
     classify_uncertainty,
@@ -16,7 +14,6 @@ from vera.uncertainty import (
     temperature_scale,
     top_k_margin,
 )
-
 
 # ---------------------------------------------------------------------------
 # Entropy

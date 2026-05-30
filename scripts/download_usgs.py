@@ -38,7 +38,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from vera.schema import N_SPEC, N_SWIR, SWIR_WAVELENGTHS_NM, WAVELENGTHS  # noqa: E402
+from vera.schema import N_SPEC, N_SWIR, SWIR_WAVELENGTHS_NM, WAVELENGTHS
 
 DEFAULT_OUT = ROOT / "data" / "cache" / "usgs_endmembers.npz"
 
@@ -279,7 +279,7 @@ def main(argv: list[str] | None = None) -> int:
     if out.exists() and not args.force:
         cached = np.load(out, allow_pickle=False)
         print(f"[ok] cache already present: {out}")
-        print(f"     source = {str(cached['source'])}")
+        print(f"     source = {cached['source']!s}")
         print(f"     keys   = {sorted(cached.files)}")
         return 0
 

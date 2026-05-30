@@ -33,13 +33,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
-from .inference import InferenceEngine, _softmax
-from .uncertainty import UncertaintyReport, classify_uncertainty
-
+from .inference import InferenceEngine
+from .uncertainty import classify_uncertainty
 
 # ---------------------------------------------------------------------------
 # Test-time augmentation

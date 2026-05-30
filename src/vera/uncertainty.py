@@ -41,7 +41,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-
 # ---------------------------------------------------------------------------
 # Thresholds (tuned on synthetic test data)
 # ---------------------------------------------------------------------------

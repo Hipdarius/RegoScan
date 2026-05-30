@@ -14,9 +14,9 @@ Both share the same input vector and the same fit/predict surface so
 
 from __future__ import annotations
 
+import pickle
 from dataclasses import dataclass
 from pathlib import Path
-import pickle
 
 import numpy as np
 from sklearn.cross_decomposition import PLSRegression
@@ -29,8 +29,6 @@ from vera.preprocess import (
     savgol_smooth,
     standardise,
 )
-from vera.schema import N_AS7265X
-
 
 # ---------------------------------------------------------------------------
 # Feature assembly
@@ -152,9 +150,9 @@ def load_baseline(path: str | Path) -> BaselineBundle:
 
 
 __all__ = [
-    "build_baseline_features",
     "BaselineBundle",
+    "build_baseline_features",
     "fit_baseline",
-    "save_baseline",
     "load_baseline",
+    "save_baseline",
 ]

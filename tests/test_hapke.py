@@ -7,12 +7,10 @@ import pytest
 
 from vera.synth import (
     mix_spectra,
-    mixture_spectrum,
     mixture_spectrum_hapke,
     reflectance_to_ssa,
     ssa_to_reflectance,
 )
-
 
 # ---------------------------------------------------------------------------
 # Reflectance ↔ SSA roundtrip

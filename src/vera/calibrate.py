@@ -51,7 +51,6 @@ import numpy as np
 
 from .schema import N_SPEC
 
-
 # ---------------------------------------------------------------------------
 # Constants — tuneable from bench characterization
 # ---------------------------------------------------------------------------
@@ -492,7 +491,7 @@ class CalibrationProfile:
         )
 
     @classmethod
-    def load(cls, path) -> "CalibrationProfile":
+    def load(cls, path) -> CalibrationProfile:
         d = np.load(path)
         return cls(
             dark_intercept=d["dark_intercept"],
@@ -515,7 +514,7 @@ class CalibrationProfile:
         white_integration_ms: float,
         dark_integration_ms: float,
         reference_temp_c: float = DARK_REF_TEMP_C,
-    ) -> "CalibrationProfile":
+    ) -> CalibrationProfile:
         """Convenience: run :func:`fit_dark_current_coefficients` and
         package the result in a ``CalibrationProfile`` with residual
         diagnostics."""
@@ -591,12 +590,12 @@ def calibrate_with_profile(
 
 
 __all__ = [
-    "CalibrationFrames",
-    "CalibrationProfile",
     "DARK_REF_TEMP_C",
     "DARK_TEMP_COEFF_PER_C",
     "REFL_CLIP_MAX",
     "SAT_THRESHOLD_COUNTS",
+    "CalibrationFrames",
+    "CalibrationProfile",
     "calibrate_spectrum",
     "calibrate_with_profile",
     "correct_dark_for_temperature",

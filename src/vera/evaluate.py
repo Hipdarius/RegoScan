@@ -22,7 +22,6 @@ import matplotlib
 matplotlib.use("Agg")  # headless — never pop a window, even in CI / on Vercel builds
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import torch
 
 from vera.datasets import (
@@ -35,7 +34,6 @@ from vera.io_csv import read_measurements_csv
 from vera.models.cnn import RegoscanCNN
 from vera.models.plsr import build_baseline_features, load_baseline
 from vera.schema import INDEX_TO_CLASS, MINERAL_CLASSES, N_CLASSES
-
 
 # ---------------------------------------------------------------------------
 # Pure-numpy metrics
@@ -254,7 +252,7 @@ def plot_ilmenite_scatter(
 
 def render_text(report: dict) -> str:
     lines: list[str] = []
-    lines.append(f"# VERA evaluation report")
+    lines.append("# VERA evaluation report")
     lines.append(f"model: {report['model']}")
     lines.append(f"n_test: {report['n_test']}")
     lines.append("")

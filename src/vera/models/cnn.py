@@ -170,4 +170,4 @@ def assert_input_size(n_features: int | None = None):
         )
 
 
-__all__ = ["RegoscanCNN", "BasicBlock1D", "count_params", "assert_input_size"]
+__all__ = ["BasicBlock1D", "RegoscanCNN", "assert_input_size", "count_params"]

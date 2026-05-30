@@ -11,9 +11,8 @@ from __future__ import annotations
 
 import numpy as np
 from scipy.signal import savgol_filter
-from scipy.sparse import csc_matrix, eye, diags
+from scipy.sparse import csc_matrix, diags
 from scipy.sparse.linalg import spsolve
-
 
 # ---------------------------------------------------------------------------
 # Reflectance normalisation (dark / white)
@@ -217,13 +216,13 @@ def apply_standardise(spectra: np.ndarray, mean: np.ndarray, std: np.ndarray) ->
 
 
 __all__ = [
-    "reflectance_normalise",
-    "savgol_smooth",
-    "first_derivative",
+    "apply_standardise",
     "asls_baseline",
     "asls_baseline_batch",
     "continuum_removal",
     "continuum_removal_batch",
+    "first_derivative",
+    "reflectance_normalise",
+    "savgol_smooth",
     "standardise",
-    "apply_standardise",
 ]

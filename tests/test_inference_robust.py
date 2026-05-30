@@ -6,7 +6,6 @@ so the tests are fast and deterministic.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import numpy as np
@@ -19,7 +18,6 @@ from vera.inference_robust import (
     fuse_sample_predictions,
     tta_predict,
 )
-
 
 # ---------------------------------------------------------------------------
 # Mock inference engine

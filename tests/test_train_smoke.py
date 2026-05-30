@@ -12,7 +12,6 @@ import json
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
 import torch
 
@@ -101,8 +100,8 @@ def test_plsr_smoke_trains_and_persists(synth_csv: Path, tmp_path: Path):
 
     # The pickled bundle must be loadable and infer cleanly.
     bb = load_baseline(out / "model.pkl")
-    from vera.io_csv import read_measurements_csv
     from vera.datasets import to_bundle
+    from vera.io_csv import read_measurements_csv
     df = read_measurements_csv(synth_csv)
     bundle = to_bundle(df.head(8))
     X = build_baseline_features(bundle)

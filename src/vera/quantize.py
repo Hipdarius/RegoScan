@@ -41,7 +41,6 @@ import torch
 from vera.models.cnn import RegoscanCNN
 from vera.schema import N_FEATURES_TOTAL
 
-
 STUB_MAGIC = b"VERA_TFLITE_STUB\x00"
 
 
@@ -115,7 +114,6 @@ def _load_calibration_features(
         return None
     try:
         # Load via pandas + io_csv to avoid hand-rolling validation.
-        import pandas as pd
         from .io_csv import extract_feature_matrix, read_measurements_csv
 
         # Look for the source CSV. The training script doesn't write
@@ -157,7 +155,7 @@ def _calibration_provider(features: np.ndarray):
                 for x in X
             )
 
-        def get_next(self):  # noqa: D401 — name from upstream API
+        def get_next(self):
             return next(self._iter, None)
 
     return _Reader(features)
@@ -237,12 +235,12 @@ def _try_tflite_real(
     this returns False and the caller writes a stub container.
     """
     try:
-        import tensorflow as tf  # noqa: F401
+        import tensorflow as tf
     except ImportError:
         return False
     try:
-        from onnx_tf.backend import prepare  # type: ignore
         import onnx
+        from onnx_tf.backend import prepare  # type: ignore
     except ImportError:
         return False
     try:

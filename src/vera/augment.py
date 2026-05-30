@@ -15,7 +15,6 @@ from dataclasses import dataclass
 
 import numpy as np
 
-
 # ---------------------------------------------------------------------------
 # Atomic augmentations
 # ---------------------------------------------------------------------------
@@ -138,12 +137,12 @@ def augment_batch(
 
 
 __all__ = [
+    "AugmentConfig",
     "add_gaussian_noise",
-    "intensity_jitter",
+    "augment_batch",
+    "augment_spectrum",
     "baseline_shift",
     "channel_dropout",
+    "intensity_jitter",
     "wavelength_shift",
-    "AugmentConfig",
-    "augment_spectrum",
-    "augment_batch",
 ]

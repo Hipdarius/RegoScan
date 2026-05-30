@@ -21,7 +21,7 @@ SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-import bridge  # type: ignore  # noqa: E402
+import bridge  # type: ignore
 
 from vera.schema import N_AS7265X, N_LED, N_SPEC, N_SWIR
 

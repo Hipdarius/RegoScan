@@ -10,8 +10,7 @@ import numpy as np
 import pytest
 
 from vera.inference import synth_demo_features
-from vera.schema import N_AS7265X, N_SPEC, N_LED, get_feature_count
-
+from vera.schema import N_AS7265X, N_LED, N_SPEC, get_feature_count
 
 # ---------------------------------------------------------------------------
 # synth_demo_features
@@ -52,7 +51,7 @@ def test_predict_wrong_feature_count_raises():
     feature vector has the wrong number of elements. Since we cannot
     easily create a real ONNX model in a unit test, we test the
     validation logic directly on a mock-like object."""
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import MagicMock
 
     # Create a minimal mock engine that has the validation logic
     engine = MagicMock()
@@ -60,7 +59,6 @@ def test_predict_wrong_feature_count_raises():
     engine._n_features = get_feature_count("full")  # 301
 
     # Call the real predict method with wrong-sized input
-    from vera.inference import InferenceEngine
 
     # We test the validation path by calling with wrong size
     wrong_features = np.zeros(50, dtype=np.float32)

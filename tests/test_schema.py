@@ -26,7 +26,6 @@ from vera.io_csv import (
 from vera.schema import (
     ALL_COLUMNS,
     LED_COLS,
-    LIF_COL,
     MINERAL_CLASSES,
     N_FEATURES_TOTAL,
     N_LED,
@@ -39,7 +38,6 @@ from vera.schema import (
     WAVELENGTHS,
     Measurement,
 )
-
 
 # ---------------------------------------------------------------------------
 # Constants / shape contract

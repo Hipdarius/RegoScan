@@ -20,11 +20,8 @@ from vera.datasets import (
     split_bundle,
     to_bundle,
 )
-from vera.io_csv import write_measurements_csv
-from vera.schema import N_SPEC, N_LED, N_SWIR, N_FEATURES_TOTAL
+from vera.schema import N_FEATURES_TOTAL, N_LED, N_SPEC, N_SWIR, WAVELENGTHS
 from vera.synth import Endmembers, synth_dataset
-from vera.schema import WAVELENGTHS
-
 
 # ---------------------------------------------------------------------------
 # Helpers

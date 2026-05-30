@@ -283,7 +283,7 @@ class Measurement(BaseModel):
         return row
 
     @classmethod
-    def from_row(cls, row: dict[str, object]) -> "Measurement":
+    def from_row(cls, row: dict[str, object]) -> Measurement:
         """Inverse of :meth:`to_row` -- build a model from a dict-shaped row."""
         spec = [float(row[c]) for c in SPEC_COLS]
         led = [float(row[c]) for c in LED_COLS]
@@ -319,35 +319,35 @@ class Measurement(BaseModel):
 
 
 __all__ = [
-    "SCHEMA_VERSION",
-    "N_SPEC",
-    "SPEC_LAMBDA_MIN_NM",
-    "SPEC_LAMBDA_MAX_NM",
-    "WAVELENGTHS",
-    "SPEC_COLS",
-    "LED_WAVELENGTHS_NM",
-    "LED_COLS",
-    "N_LED",
-    "LIF_COL",
-    "SWIR_WAVELENGTHS_NM",
-    "N_SWIR",
-    "SWIR_COLS",
+    "ALL_COLUMNS",
     "AS7265X_BANDS",
-    "N_AS7265X",
     "AS7265X_COLS",
-    "SensorMode",
-    "SENSOR_MODES",
-    "get_feature_count",
-    "columns_for_mode",
-    "META_COLS",
-    "MINERAL_CLASSES",
-    "N_CLASSES",
     "CLASS_TO_INDEX",
     "INDEX_TO_CLASS",
-    "PACKING_DENSITIES",
-    "ALL_COLUMNS",
+    "LED_COLS",
+    "LED_WAVELENGTHS_NM",
+    "LIF_COL",
+    "META_COLS",
+    "MINERAL_CLASSES",
+    "N_AS7265X",
+    "N_CLASSES",
     "N_FEATURES_TOTAL",
+    "N_LED",
+    "N_SPEC",
+    "N_SWIR",
+    "PACKING_DENSITIES",
+    "SCHEMA_VERSION",
+    "SENSOR_MODES",
+    "SPEC_COLS",
+    "SPEC_LAMBDA_MAX_NM",
+    "SPEC_LAMBDA_MIN_NM",
+    "SWIR_COLS",
+    "SWIR_WAVELENGTHS_NM",
+    "WAVELENGTHS",
     "Measurement",
     "MineralClass",
     "PackingDensity",
+    "SensorMode",
+    "columns_for_mode",
+    "get_feature_count",
 ]

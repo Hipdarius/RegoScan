@@ -6,8 +6,8 @@ contract is enforced in exactly one place.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -17,17 +17,14 @@ from vera.schema import (
     AS7265X_COLS,
     LED_COLS,
     LIF_COL,
-    Measurement,
     MINERAL_CLASSES,
     N_AS7265X,
-    N_LED,
-    N_SPEC,
     N_SWIR,
     PACKING_DENSITIES,
     SENSOR_MODES,
     SPEC_COLS,
     SWIR_COLS,
-    columns_for_mode,
+    Measurement,
 )
 
 
@@ -359,14 +356,14 @@ def extract_labels(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
 
 __all__ = [
     "SchemaError",
-    "validate_dataframe",
-    "read_measurements_csv",
-    "write_measurements_csv",
-    "extract_spectra",
-    "extract_leds",
-    "extract_lif",
-    "extract_swir",
     "extract_as7265x",
     "extract_feature_matrix",
     "extract_labels",
+    "extract_leds",
+    "extract_lif",
+    "extract_spectra",
+    "extract_swir",
+    "read_measurements_csv",
+    "validate_dataframe",
+    "write_measurements_csv",
 ]

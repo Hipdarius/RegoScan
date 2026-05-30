@@ -44,7 +44,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from vera.schema import N_SPEC, WAVELENGTHS  # noqa: E402
+from vera.schema import N_SPEC, WAVELENGTHS
 
 DEFAULT_OUT = ROOT / "data" / "cache" / "relab_lunar.npz"
 DEFAULT_USGS = ROOT / "data" / "cache" / "usgs_endmembers.npz"

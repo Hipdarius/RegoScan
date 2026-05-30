@@ -10,10 +10,10 @@ the same CSV schema and just work.
 """
 
 import uuid
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 
@@ -21,14 +21,13 @@ from vera.schema import (
     AS7265X_BANDS,
     LED_WAVELENGTHS_NM,
     MINERAL_CLASSES,
-    Measurement,
     N_LED,
     N_SPEC,
     N_SWIR,
     PACKING_DENSITIES,
     SENSOR_MODES,
-    SWIR_WAVELENGTHS_NM,
     WAVELENGTHS,
+    Measurement,
 )
 
 ENDMEMBER_NAMES: tuple[str, ...] = (
@@ -511,7 +510,7 @@ def synth_measurement(
     if packing_density is None:
         packing_density = str(rng.choice(PACKING_DENSITIES))
     if timestamp is None:
-        timestamp = datetime.now(timezone.utc).isoformat()
+        timestamp = datetime.now(UTC).isoformat()
 
     # Pipeline: perturb endmember spectra to simulate natural
     # mineralogical variation, then mix with the target fractions.
@@ -679,20 +678,20 @@ def synth_dataset(
 
 
 __all__ = [
-    "ENDMEMBER_NAMES",
     "ENDMEMBER_INDEX",
+    "ENDMEMBER_NAMES",
     "LIF_EFFICIENCY",
     "Endmembers",
     "NoiseConfig",
-    "load_endmembers",
+    "_as7265x_response",
     "fractions_for_class",
+    "load_endmembers",
     "mix_spectra",
     "mixture_spectrum",
     "mixture_spectrum_hapke",
     "reflectance_to_ssa",
     "ssa_to_reflectance",
-    "_as7265x_response",
+    "synth_dataset",
     "synth_measurement",
     "synth_sample",
-    "synth_dataset",
 ]

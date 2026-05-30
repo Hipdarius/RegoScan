@@ -93,7 +93,7 @@ def compute_features(
     if leds.shape != (spectra.shape[0], len(LED_WAVELENGTHS_NM)):
         raise ValueError(f"leds must be (N, {len(LED_WAVELENGTHS_NM)})")
     if lif.shape != (spectra.shape[0],):
-        raise ValueError(f"lif must be (N,) matching spectra")
+        raise ValueError("lif must be (N,) matching spectra")
 
     albedo = _broad_albedo(spectra)
     slope = _vis_red_slope(spectra)
@@ -283,10 +283,10 @@ def compute_features_dispatch(
 
 __all__ = [
     "FEATURE_NAMES",
-    "N_FEATURES",
-    "compute_features",
     "MULTISPECTRAL_FEATURE_NAMES",
+    "N_FEATURES",
     "N_MULTISPECTRAL_FEATURES",
-    "compute_features_multispectral",
+    "compute_features",
     "compute_features_dispatch",
+    "compute_features_multispectral",
 ]

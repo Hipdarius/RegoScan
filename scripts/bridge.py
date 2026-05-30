@@ -56,7 +56,7 @@ import json
 import logging
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -75,19 +75,11 @@ if str(SRC) not in sys.path:
 from vera.schema import (
     ALL_COLUMNS,
     INDEX_TO_CLASS,
-    LED_COLS,
-    LIF_COL,
-    MINERAL_CLASSES,
-    Measurement,
-    N_AS7265X,
-    N_FEATURES_TOTAL,
     N_LED,
     N_SPEC,
     N_SWIR,
     PACKING_DENSITIES,
-    SPEC_COLS,
-    SWIR_COLS,
-    get_feature_count,
+    Measurement,
 )
 
 # ---------------------------------------------------------------------------
@@ -234,7 +226,7 @@ def frame_to_measurement(
     return Measurement(
         sample_id=sample_id,
         measurement_id=str(uuid.uuid4()),
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         mineral_class=predicted_class,  # type: ignore[arg-type]
         ilmenite_fraction=predicted_ilmenite,
         integration_time_ms=frame.integration_time_ms,

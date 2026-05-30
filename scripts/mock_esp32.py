@@ -70,7 +70,7 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from vera.inference import resolve_endmembers
-from vera.schema import AS7265X_BANDS, MINERAL_CLASSES, N_AS7265X, N_LED, N_SPEC, WAVELENGTHS
+from vera.schema import AS7265X_BANDS, MINERAL_CLASSES, WAVELENGTHS
 from vera.synth import (
     NoiseConfig,
     fractions_for_class,

@@ -21,7 +21,6 @@ from vera.schema import (
 )
 from vera.synth import (
     ENDMEMBER_INDEX,
-    ENDMEMBER_NAMES,
     Endmembers,
     NoiseConfig,
     fractions_for_class,
@@ -30,7 +29,6 @@ from vera.synth import (
     synth_measurement,
     synth_sample,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixture: in-memory endmembers

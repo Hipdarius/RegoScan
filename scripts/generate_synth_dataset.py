@@ -21,9 +21,8 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from vera.io_csv import write_measurements_csv  # noqa: E402
-from vera.synth import load_endmembers, synth_dataset  # noqa: E402
-
+from vera.io_csv import write_measurements_csv
+from vera.synth import load_endmembers, synth_dataset
 
 DEFAULT_ENDMEMBERS = ROOT / "data" / "cache" / "usgs_endmembers.npz"
 DEFAULT_OUT = ROOT / "data" / "synth_v1.csv"
