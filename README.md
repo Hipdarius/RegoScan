@@ -323,7 +323,7 @@ vera/
 │  ├─ Protocol.{h,cpp}       ArduinoJson serialization + thermistor
 │  └─ Config.h               Pin assignments, calibration constants
 │
-├─ tests/                    214 tests across 14 modules
+├─ tests/                    214 tests across 15 modules
 ├─ scripts/                  mock_esp32, bridge, ablate_mixing, build_tflite_micro
 ├─ docs/                     engineering-journal.md, paper-notes.md
 ├─ runs/                     Trained artefacts (model.onnx, meta.json)
