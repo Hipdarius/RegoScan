@@ -841,3 +841,382 @@ sprint. None can be answered without hardware.
 12. Real-world ECE before/after temperature fitting?
 13. Does TTA at n_samples=8 actually reduce variance on real samples?
 14. Does sample fusion (mean vs vote) matter for borderline cases?
+
+---
+
+# May 2026 — Documentation, polish, and pre-hardware hardening
+
+The April sprint closed the major scientific gaps (calibration,
+uncertainty, Hapke, SAM baseline). May was a "make this look like a
+paper, not a school project" sprint: documentation surface, repo
+hygiene, and lint enforcement. No new science, no new hardware. The
+goal was to lock the codebase into a state that can survive a
+multi-month hiatus and resume cleanly.
+
+---
+
+### 2026-05-14 — Entry 19: Smooth scroll engine + progress beam
+
+**Commit:** `e3010dd` (feat(web): smooth scroll engine and scroll-progress beam)
+
+**What was done:**
+Added two global enhancements to the root layout: SmoothScroll wraps
+the entire app in Lenis-driven momentum scrolling with an ease-out-expo
+deceleration curve (1.05 s duration). ScrollProgress renders a 1 px
+spring-smoothed cyan beam pinned to the viewport top, tracking
+document scroll progress. Both effects are bypassed entirely for users
+with `prefers-reduced-motion: reduce`. The smooth-scroll engine fires
+native scroll events so existing IntersectionObservers and scroll-spy
+nav (MarginNav) continue to work.
+
+**Why:**
+The mission console reads like instrumentation; the documentation
+pages were starting to read like a static print article. Momentum
+scrolling and a progress indicator give the docs the same "this is
+under a calibrated controller" feel as the console, without changing
+any layout. It is the smallest possible UX bridge between the two
+modes.
+
+**Discovered / Learned:**
+Naive `scroll-behavior: smooth` CSS doesn't compose with momentum
+wheels and breaks anchor jumps. Lenis is the established solution and
+its `anchors: true` option preserves hash-link behaviour. The 1.05 s
+ease-out-expo lands at zero velocity — a longer duration starts
+feeling sluggish, a shorter one breaks the "calibrating onto a value"
+metaphor.
+
+**Paper impact:**
+None on Methods/Results. Possibly Instrument Design appendix if a
+screenshot of the docs ends up in the writeup.
+
+**Open questions:**
+- Does smooth scroll interfere with screen readers? Need to test.
+
+---
+
+### 2026-05-16 — Entry 20: Docs primitives + diagram library
+
+**Commit:** `de58deb` (feat(web): docs primitives and diagram library)
+
+**What was done:**
+Created `web/components/docs/` as a design-system layer for the
+documentation pages. Three modules totalling ~1,580 lines:
+`primitives.tsx` (useDocTheme hook centralising colour tokens, FadeIn
+enter animation, StatusRow for OK/pending checklist rows),
+`diagrams.tsx` (LayerStack, WavelengthCoverage, StateMachine,
+PacketFrame, ResNetDiagram, PipelineFlow, StatusFieldStates,
+AcquisitionScore, TransferMatrix, DeploymentTiers — purely declarative
+SVG, no charting library), and `about-extras.tsx` (ProbeSchematic,
+Roadmap, SplitColumn used only by /about).
+
+**Why:**
+The first cuts of /about, /architecture, /methods used inline ad-hoc
+prose with bespoke grid styles. The pages diverged in colour, rhythm,
+and diagram aesthetic even though they share an audience. Pulling the
+common primitives into a single module makes the rebuild possible
+(Entry 21) and means future pages inherit the rhythm for free.
+
+**Discovered / Learned:**
+Recharts and other charting libraries impose heavy bundles for what
+are effectively static SVGs in a documentation context. Hand-rolling
+the diagrams as React components with inline `<svg>` keeps the
+documentation routes around 50 KB after gzip and lets each diagram
+speak the same theme tokens as the surrounding prose. The
+StatusFieldStates palette was simplified mid-implementation from four
+colours to three (cyan for nominal/borderline, amber for low-confidence,
+rose reserved for likely_ood) — fewer hues, clearer semantics.
+
+**Paper impact:**
+None on metrics. Possibly Discussion section if we cite the
+front-end as part of the operator-facing instrument story.
+
+**Open questions:**
+- Is there value in extracting the docs primitives as an npm package
+  so a future hardware probe under the same project can reuse them?
+
+---
+
+### 2026-05-18 — Entry 21: Page rebuild on primitives + count-up flicker bugfix
+
+**Commit:** `2d112e1` (refactor(web): rebuild /architecture and /methods on docs primitives)
+
+**What was done:**
+Rebuilt /architecture and /methods on top of the new primitives.
+/architecture now has six numbered sections (Stack / Optical /
+Firmware / Wire / Inference / Console) with a typeset LayerStack
+diagram, two separate StateMachine renderings (main loop + SWIR
+sub-state), and a structured PacketFrame for the wire format.
+/methods rolls the original ten sections into six (Metrics / Synth /
+Training / Calibration / Uncertainty / Validation), with §01 using
+a four-row MetricRow for the headline numbers.
+
+DocPage.tsx grew shared building blocks: Eq, Math, Section,
+SubSection, Prose, MetricRow, VitalStats, SpecList, SymbolLegend,
+Bibliography, MarginNav, FactGrid.
+
+Bundled into the same commit: a fix for the headline-metric
+count-up flicker. The CountUpValue component had been tweening from
+0 → target on first viewport entry, but the IntersectionObserver +
+React 18 StrictMode + Next.js client navigation interaction produced
+two failure modes — numbers that restarted from 0 on every parent
+rerender (MarginNav scroll updates), and numbers stuck at 0 on a
+second visit to the page. After two attempted fixes (tighter effect
+deps, then a `started` flag) failed, the count-up was dropped
+entirely. The component now renders the static value as written.
+
+**Why:**
+The reliability budget for a science-fair headline number is zero.
+Cleverness in the animation layer is not worth a "did the tween land?"
+question on the metric block. A static-rendering MetricRow is also
+substantially cheaper at runtime (no IntersectionObserver, no RAF
+loop) which matters on a documentation page expected to render
+in mobile browsers as well as on a presenter's laptop.
+
+**Discovered / Learned:**
+React 18's StrictMode double-invokes effects in development. Animated
+components must either (a) be idempotent under double-invoke, or
+(b) accept that they will run twice in dev. The `playedRef` "ever
+played" flag I tried to use as a guard was set to `true` on the first
+invocation and survived the cleanup, so the second invocation bailed
+early — a textbook "don't combine refs and StrictMode this way"
+mistake. The static-render rewrite sidesteps the entire class of
+issues. RegExpMatchArray-as-effect-dep is also a trap; React compares
+deps with Object.is and a fresh match object on every render
+re-triggers the effect.
+
+**Paper impact:**
+None on metrics. Reinforces a Methods-section claim — the
+documentation faithfully reports the headline numbers without any
+animation that could miscalibrate the displayed value.
+
+**Open questions:**
+- None. The fix is final.
+
+---
+
+### 2026-05-22 — Entry 22: Reference library expansion
+
+**Commit:** `c2efb9d` (docs: expand reference library across paper-notes and the website)
+
+**What was done:**
+Brought the project's working bibliography in line with what the
+codebase actually depends on. /about's reference list grew from 6 to
+11 entries grouped by what they justify (ISRU rationale → spectroscopy
+→ ML → AL → photometry); /methods grew a new §07 References section
+with 15 entries adding the Hamamatsu C12880MA + ams AS7265x datasheets,
+Loshchilov & Hutter (AdamW), Jacobson et al. (INT8 QDQ), and David et
+al. (TFLite Micro). `docs/paper-notes.md` got a parallel "Reference
+Library" section (groups A–G) so the website citations and the
+project's own notes don't drift.
+
+**Why:**
+The paper-notes file has a dependency-tracking section per chapter
+("Background / Prior Art" etc.) but no consolidated bibliography.
+Without a single source of truth, the web pages and the eventual LaTeX
+manuscript would have to maintain their own lists in parallel. The
+new structure has the website and `paper-notes.md` rendering the same
+12–15 references, each tied to the part of VERA it informs ("→ §02
+Synth. Crystal-field band positions for Fe²⁺...").
+
+**Discovered / Learned:**
+The audit-trail line per reference (the `→ used` field) is more
+valuable than the bibliography itself. A jury can land on any number
+on /methods and trace it back to the study that justifies it without
+reading the bibliography cold. This is a stronger contract than
+"these are the papers we read".
+
+**Paper impact:**
+Background / Prior Art now has a complete reference list. References
+section of the paper can pull directly from `paper-notes.md` Section
+"Reference Library" by grouping (A: mission rationale, B: spectroscopy,
+C: datasheets, D: ML, E: calibration, F: AL, G: embedded).
+
+**Open questions:**
+- None.
+
+---
+
+### 2026-05-27 / 28 — Entry 23: Repo hygiene pass
+
+**Commits:** `148dd1f`, `4b4cedd`, `e4168bb`
+
+**What was done:**
+Three small but real fixes flushed by an end-of-month audit:
+1. `CONTRIBUTING.md` had `git clone .../your-org/vera.git` from the
+   template — anyone following the doc fails on command 1. Replaced
+   with the actual `Hipdarius/VERA` URL. Also replaced the "see project
+   memory for rationale" phrase (an AI-tool internal vocabulary leak)
+   with a pointer to the module docstring in `src/vera/schema.py`.
+2. `lucide-react` was listed in `web/package.json` and recommended in
+   `UI_STANDARDS.md` but had zero imports anywhere. Dropped the
+   dependency, updated UI_STANDARDS to match what the codebase
+   actually does (inline SVG, no library).
+3. `web/api/predict.py` is a Vercel serverless function; `vercel.json`
+   declares `includeFiles: api/model.onnx`. But `*.onnx` was in the
+   global `.gitignore`, so the file never shipped — Vercel cold-starts
+   would 500 with "model not found". Added an explicit
+   `!web/api/model.onnx` exception and committed the FP32 baseline
+   (2.6 MB).
+
+**Why:**
+The first two are documentation honesty: the project should describe
+what it actually does, not what a template did. The third is a real
+production bug: any Vercel deploy of the current `main` would fail.
+
+**Discovered / Learned:**
+`.gitignore` exceptions interact in a non-obvious way with `*.onnx`
+patterns — the negation has to come AFTER the broader rule and the
+path has to be relative to the .gitignore location. Confirmed the
+override worked with `git check-ignore -v`.
+
+**Paper impact:**
+None on metrics. Discussion of "honest documentation" if we ever
+write a paragraph on engineering process.
+
+**Open questions:**
+- None.
+
+---
+
+### 2026-05-29 / 30 — Entry 24: Lint policy + CI enforcement
+
+**Commits:** `9a39127` (feat(ci)), `775b017` (style: ruff auto-fixes)
+
+**What was done:**
+Closed a long-standing enforcement gap: `Makefile` already invoked
+`ruff check` and `CONTRIBUTING.md` demanded "make lint reports no
+issues", but `pyproject.toml` had no `[tool.ruff]` section and CI
+never ran the lint step. Lint failures could merge to main.
+
+`pyproject.toml`: full `[tool.ruff]` policy with line-length 100 and
+a selected rule set focused on real bugs (pyflakes, pycodestyle,
+isort, bugbear, pyupgrade, ruff-native). Per-file ignores let
+scripts/ and tests/ keep the sys.path-insert-then-import pattern
+they need; ambiguous-Unicode rules (RUF001/002/003) are explicitly
+disabled because Greek letters (σ, μ, λ), the multiplication sign
+(×), and the en-dash (–) are the right symbols in spectroscopy
+docstrings.
+
+`.github/workflows/ci.yml`: added two new parallel jobs — Lint ·
+Python (ruff) and Lint · Web (next lint) — alongside the existing
+test, typecheck, and firmware-build jobs.
+
+`Makefile`: split `lint` (CI runs check-only) from `format` (opt-in
+via `make format`) so PR diffs stay focused. Added `typecheck` and
+`lint-fix` aliases.
+
+Real bugs flushed by the new policy:
+- `apps/api.py:355` — added `from e` to HTTPException re-raise (B904,
+  exception chaining)
+- `src/vera/datasets.py:84` — renamed unused loop var to `_klass` (B007)
+- `src/vera/sam.py:188` — removed dead `names` assignment (F841)
+- `src/vera/train.py:307` — split `if not history: return` onto two
+  lines so debuggers can break (E701)
+- `tests/test_active_learning.py:26` — removed unused `K = p.size`
+  (F841)
+
+A separate `style:` commit applied 100+ mechanical auto-fixes (sorted
+`__all__` lists, modern type hints `"Measurement"` → `Measurement`,
+unused-import removal, isort) so the lint-policy commit stayed small
+and reviewable.
+
+**Why:**
+A policy that exists in documentation but is not enforced is a
+liability — anyone reading CONTRIBUTING expects `make lint` to be
+meaningful, but until this commit the command ran with ruff's bare
+defaults. The new policy is calibrated for scientific code: real
+bugs are blocked, scientific Unicode is allowed, the rare
+sys.path-insert idiom is whitelisted by file pattern. The CI job
+ensures the policy is exercised on every PR.
+
+**Discovered / Learned:**
+Ruff's defaults are designed for general-purpose Python and produce
+significant false-positive volume on a numerical codebase: 84 errors
+remained after the auto-fix pass, the majority of which were
+RUF001/002/003 (ambiguous Unicode) on intentional Greek-letter
+docstrings. Calibrating the policy was a 30-minute exercise in
+deciding which rules describe real bugs versus stylistic preferences.
+The B905 zip-strict rule in particular fires on every `zip(a, b)`
+in numerical code where length is invariant by construction —
+genuine bugs would be elsewhere.
+
+The `react/no-unescaped-entities` ESLint rule similarly flagged every
+straight quote in JSX text. Disabling it preserves prose quality;
+curly-quote escaping degrades readability.
+
+**Paper impact:**
+Methods (Reproducibility section): "the codebase is enforced by
+parallel pytest, ruff, eslint, tsc, and PlatformIO jobs running on
+every push." This is a credible engineering-rigor claim now.
+
+**Open questions:**
+- None on the policy itself.
+
+---
+
+### 2026-05-31 — Entry 25: Pre-hardware-phase snapshot
+
+**Commit:** `4f80ced` (docs: correct test-module count in README) and the snapshot below.
+
+**What was done:**
+End-of-May audit confirms:
+- 214 tests pass across 15 modules (was 14 in README; one-character fix)
+- Ruff: clean
+- Next lint: clean
+- TSC: clean
+- 5 CI jobs configured: Lint · Python, Lint · Web, Test · pytest,
+  Typecheck · tsc, Build · firmware (PlatformIO)
+- 26 commits between 2026-04-11 and 2026-05-31, conventional-commit
+  format throughout
+- Web bundle: 4 routes (`/`, `/about`, `/architecture`, `/methods`)
+- Real spectra captured: still zero
+- Hardware components ordered: still zero
+
+**Why:**
+The May sprint was "lock the project against a hiatus". With the
+linting policy enforced, the documentation surface in line with the
+codebase, and the Vercel deploy actually working, the project can sit
+for weeks without bit-rot accumulating. The next phase is genuinely
+hardware: order the BOM (≈ €658), assemble the C12880MA + ADS1115
+daughterboard, capture BaSO₄ + reference minerals.
+
+**Discovered / Learned:**
+Repo hygiene compounds. The CONTRIBUTING URL bug, the dead
+lucide-react dependency, and the gitignored Vercel model file would
+each have cost a future contributor 5 to 30 minutes. Together, an
+hour of trust. Catching them as a single audit pass is roughly 100 ×
+cheaper than catching them one at a time as user reports.
+
+**Paper impact:**
+None. This is a checkpoint, not a result.
+
+**Open questions:**
+- The 14 from 2026-04-26 plus:
+15. With CI enforcing lint, what's the next category of bug to add a
+    rule for? (My guess: a custom check that
+    `vera.schema.SCHEMA_VERSION` is bumped whenever
+    `Measurement` schema changes.)
+
+---
+
+## Updated Metrics Snapshot — 2026-05-31
+
+| Metric                                  | Value (2026-04-26) | Value (2026-05-31) | Delta |
+|:----------------------------------------|-------------------:|-------------------:|------:|
+| Total Python lines                      |             ~9,800 |            ~10,200 |  +400 |
+| Total firmware lines                    |              1,420 |              1,423 |     0 |
+| Total web lines                         |             ~1,400 |             ~3,300 |+1,900 |
+| Total docs lines                        |                843 |              1,365 |  +522 |
+| Tests passing                           |                214 |                214 |     0 |
+| Test files                              |                 15 |                 15 |     0 |
+| CI jobs                                 |                  3 |                  5 |    +2 |
+| Documentation routes                    |                  1 |                  4 |    +3 |
+| Lint policy                             |     Default (none) |   Enforced via CI  |   ✓   |
+| Ruff errors                             |        not checked |                  0 |   ✓   |
+| Next lint errors                        |        not checked |                  0 |   ✓   |
+| Real spectra collected                  |                  0 |                  0 |     0 |
+| Hardware components ordered             |                  0 |                  0 |     0 |
+
+**Posture:** The software is hardened. The hardware queue is unchanged.
+The next entry in this journal will be either Entry 26 ("first BOM
+order placed") or it will sit empty until that happens.
