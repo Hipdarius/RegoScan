@@ -70,3 +70,6 @@ web/.env.local
 # Linting
 .ruff_cache/
 .mypy_cache/
+
+# Local scratch
+*.local.json
