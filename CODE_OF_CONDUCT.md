@@ -34,7 +34,7 @@ about the project (mentions on social media, conference Q&A, etc.).
 
 ## Enforcement
 
-Reports go to **dieteticienne@conseildietetique.lu** with the subject
+Reports go to **FerDa858@school.lu** with the subject
 line `[VERA conduct] <summary>`. The maintainer will review every
 report and respond within 7 days. Possible outcomes include a private
 warning, a public correction, a temporary or permanent ban from the

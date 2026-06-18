@@ -390,7 +390,7 @@ Key papers underpinning the design choices, with full annotations in
   author       = {Ferent, Darius},
   title        = {VERA: A Handheld VIS/NIR + SWIR + LIF Probe for Real-Time Lunar Regolith Mineralogy},
   year         = {2027},
-  howpublished = {Jonk Fuerscher, Lycée des Arts et Métiers, Luxembourg},
+  howpublished = {Jonk Fuerscher 2027},
   url          = {https://github.com/Hipdarius/VERA}
 }
 ```
@@ -410,7 +410,6 @@ Key papers underpinning the design choices, with full annotations in
 <div align="center">
 
 **Built by [Darius Ferent](https://github.com/Hipdarius)** ·
-**Lycée des Arts et Métiers, Luxembourg** ·
 **Jonk Fuerscher 2027**
 
 *From photons to a class label, in five layers — open-source under MIT.*

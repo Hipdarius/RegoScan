@@ -97,7 +97,7 @@ const REFERENCES = [
 export default function AboutPage() {
   return (
     <DocPage
-      eyebrow="Darius Ferent · Lycée des Arts et Métiers · Luxembourg"
+      eyebrow="Darius Ferent · Jonk Fuerscher 2027"
       title="A handheld lunar mineral classifier."
       intro="VERA is a compact dual-sensor probe that classifies lunar regolith mineralogy in real time on a microcontroller. It targets the most actionable ISRU question: where is the ilmenite, the leading candidate for in-situ oxygen extraction."
       aside={<ProbeSchematic />}
@@ -250,8 +250,8 @@ export default function AboutPage() {
         <SpecList
           size="footnote"
           items={[
-            { label: "Builder", value: "Darius Ferent · Lycée des Arts et Métiers · LU" },
-            { label: "Competition", value: "Jonk Fuerscher 2027 · Luxembourg" },
+            { label: "Builder", value: "Darius Ferent" },
+            { label: "Competition", value: "Jonk Fuerscher 2027" },
             { label: "License", value: "MIT · github.com/Hipdarius/VERA" },
             { label: "Schema", value: "v1.2.0 · firmware ↔ bridge ↔ API ↔ console" },
             { label: "Inference", value: "ONNX Runtime · FP32 canonical · INT8 deployable" },

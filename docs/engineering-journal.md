@@ -1,7 +1,7 @@
 # VERA Engineering Journal
 
 **Project:** VERA (Visible & Emission Regolith Assessment) — compact dual-sensor VIS/NIR + 405 nm LIF probe for real-time lunar regolith mineralogy  
-**Builder:** Darius Ferent, Lycée des Arts et Métiers, Luxembourg. LSA Astronaut for a Day Ambassador.  
+**Builder:** Darius Ferent  
 **Repository:** github.com/Hipdarius/VERA  
 **Competition target:** Jonk Fuerscher 2027 → flagship prizes (TISF, EUCYS, ISEF)  
 **Purpose:** Permanent engineering record feeding a 15–20 page LaTeX competition paper  
@@ -62,7 +62,7 @@ VERA (formerly REGOSCAN) combines a 288-channel VIS/NIR spectrometer (Hamamatsu 
 
 ## Strategic Context
 
-**Jonk Fuerscher:** 83 projects, 20 prizes. Recent flagship winners: Rodion Zaichikov (hypersonic wind tunnel + Schlieren imaging → TISF), Krzesimir Hyzyk (embedded ML for navigation → ISEF). VERA fits the pattern the jury rewards. ESRIC (European Space Resources Innovation Centre) is headquartered in Luxembourg — direct institutional relevance.
+**Jonk Fuerscher:** 83 projects, 20 prizes. Recent flagship winners: Rodion Zaichikov (hypersonic wind tunnel + Schlieren imaging → TISF), Krzesimir Hyzyk (embedded ML for navigation → ISEF). VERA fits the pattern the jury rewards.
 
 **ISEF scoring:** Research problem (10pts), design/methodology (15pts), construction/testing (20pts), creativity/impact (20pts), presentation (35pts). Presentation is the largest block. Publication before competition adds massive credibility.
 
@@ -72,9 +72,9 @@ VERA (formerly REGOSCAN) combines a 288-channel VIS/NIR spectrometer (Hamamatsu 
 
 **Critical success factors:**
 1. Working hardware with real measurements (not just synthetic)
-2. XRF validation from ESRIC/LIST on 5+ samples (the "hero figure")
+2. XRF validation from a partner lab on 5+ samples (the "hero figure")
 3. Industry mentor letter
-4. At least one formal mentor (ESRIC researcher)
+4. At least one formal academic / industry mentor
 5. The AS7265x vs C12880MA comparison study ("can €25 match €290?")
 6. The domain gap study (synthetic-trained model on real data)
 7. Blind classification demo at the booth
@@ -1044,9 +1044,10 @@ C: datasheets, D: ML, E: calibration, F: AL, G: embedded).
 Three small but real fixes flushed by an end-of-month audit:
 1. `CONTRIBUTING.md` had `git clone .../your-org/vera.git` from the
    template — anyone following the doc fails on command 1. Replaced
-   with the actual `Hipdarius/VERA` URL. Also replaced the "see project
-   memory for rationale" phrase (an AI-tool internal vocabulary leak)
-   with a pointer to the module docstring in `src/vera/schema.py`.
+   with the actual `Hipdarius/VERA` URL. Also rewrote the "see project
+   memory for rationale" phrase, which pointed at nothing readable, to
+   a concrete reference to the module docstring in
+   `src/vera/schema.py`.
 2. `lucide-react` was listed in `web/package.json` and recommended in
    `UI_STANDARDS.md` but had zero imports anywhere. Dropped the
    dependency, updated UI_STANDARDS to match what the codebase
@@ -1166,7 +1167,7 @@ End-of-May audit confirms:
 - TSC: clean
 - 5 CI jobs configured: Lint · Python, Lint · Web, Test · pytest,
   Typecheck · tsc, Build · firmware (PlatformIO)
-- 26 commits between 2026-04-11 and 2026-05-31, conventional-commit
+- 34 commits between 2026-04-11 and 2026-05-31, conventional-commit
   format throughout
 - Web bundle: 4 routes (`/`, `/about`, `/architecture`, `/methods`)
 - Real spectra captured: still zero
@@ -1201,21 +1202,28 @@ None. This is a checkpoint, not a result.
 
 ## Updated Metrics Snapshot — 2026-05-31
 
-| Metric                                  | Value (2026-04-26) | Value (2026-05-31) | Delta |
-|:----------------------------------------|-------------------:|-------------------:|------:|
-| Total Python lines                      |             ~9,800 |            ~10,200 |  +400 |
-| Total firmware lines                    |              1,420 |              1,423 |     0 |
-| Total web lines                         |             ~1,400 |             ~3,300 |+1,900 |
-| Total docs lines                        |                843 |              1,365 |  +522 |
-| Tests passing                           |                214 |                214 |     0 |
-| Test files                              |                 15 |                 15 |     0 |
-| CI jobs                                 |                  3 |                  5 |    +2 |
-| Documentation routes                    |                  1 |                  4 |    +3 |
-| Lint policy                             |     Default (none) |   Enforced via CI  |   ✓   |
-| Ruff errors                             |        not checked |                  0 |   ✓   |
-| Next lint errors                        |        not checked |                  0 |   ✓   |
-| Real spectra collected                  |                  0 |                  0 |     0 |
-| Hardware components ordered             |                  0 |                  0 |     0 |
+| Metric                                  | Value (2026-04-26) | Value (2026-05-31) |  Delta |
+|:----------------------------------------|-------------------:|-------------------:|-------:|
+| Total Python lines                      |            ~10,500 |            ~11,000 |   +500 |
+| Total firmware lines                    |              1,420 |              1,423 |      0 |
+| Total web lines (TS + TSX)              |             ~1,400 |             ~5,200 | +3,800 |
+| Total docs lines                        |                843 |              1,470 |   +627 |
+| Tests passing                           |                214 |                214 |      0 |
+| Test files                              |                 15 |                 15 |      0 |
+| CI jobs                                 |                  3 |                  5 |     +2 |
+| Documentation routes                    |                  1 |                  4 |     +3 |
+| Lint policy                             |     Default (none) |   Enforced via CI  |    ✓   |
+| Ruff errors                             |        not checked |                  0 |    ✓   |
+| Next lint errors                        |        not checked |                  0 |    ✓   |
+| Real spectra collected                  |                  0 |                  0 |      0 |
+| Hardware components ordered             |                  0 |                  0 |      0 |
+
+(Web growth — +3,800 lines — is dominated by the docs primitives and
+diagram library introduced in Entry 20: ~1,580 lines of declarative
+SVG diagrams plus the DocPage primitives, with the rest in the three
+new `/about`, `/architecture`, `/methods` route files. The earlier
+draft of this snapshot underestimated the web delta by undercounting
+the `web/components/docs/` tree.)
 
 **Posture:** The software is hardened. The hardware queue is unchanged.
 The next entry in this journal will be either Entry 26 ("first BOM

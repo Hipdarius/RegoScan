@@ -9,7 +9,7 @@ engine, a credential leak, or anything else that would let a third
 party compromise a deployment — please report it privately rather
 than opening a public issue.
 
-**Email:** dieteticienne@conseildietetique.lu
+**Email:** darius.ferent@gmail.com
 **Subject line:** `[VERA security] <one-line summary>`
 
 If the issue is straightforward I will acknowledge within 7 days and

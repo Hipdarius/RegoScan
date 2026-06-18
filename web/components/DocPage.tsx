@@ -609,7 +609,7 @@ export function SpecList({
 /* =============================================================
    SymbolLegend — footer block defining the technical symbols
    that appear inline in /methods (τ_p, τ_m, τ_h, H̃, IMSA, ECE,
-   SAM, OOD). For the ESRIC-researcher persona who needs a path
+   SAM, OOD). For the technical-reviewer persona who needs a path
    to the definitions without leaving the page.
    ============================================================= */
 export function SymbolLegend({

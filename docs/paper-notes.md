@@ -9,7 +9,7 @@
 
 ### Introduction
 - 2026-04-11 | **DRAFT-READY** — ISRU motivation, ilmenite oxygen pathway, gap in current prospecting tools, VERA's value proposition. Source material exists in README and project framing.
-- 2026-04-11 | **DRAFT-READY** — Updated: strong framing from dev log. ISRU oxygen extraction from ilmenite as most promising near-term pathway. VERA positioned as handheld-class instrument solving weight/speed/sample-return limitations of existing tools. ESRIC/Luxembourg institutional relevance adds local hook.
+- 2026-04-11 | **DRAFT-READY** — Updated: strong framing from dev log. ISRU oxygen extraction from ilmenite as most promising near-term pathway. VERA positioned as handheld-class instrument solving weight/speed/sample-return limitations of existing tools.
 - 2026-04-11 | **DRAFT-READY** — Post-SWIR: no change to Introduction status. The SWIR addition strengthens the value proposition but doesn't alter the framing.
 
 ### Background / Prior Art
