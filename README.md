@@ -9,13 +9,12 @@
 **A handheld VIS/NIR + SWIR + LIF probe for real-time lunar regolith mineralogy**
 
 [![CI](https://github.com/Hipdarius/VERA/actions/workflows/ci.yml/badge.svg)](https://github.com/Hipdarius/VERA/actions/workflows/ci.yml)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white)](https://python.org)
-[![Next.js 14](https://img.shields.io/badge/web-Next.js_14-000?logo=nextdotjs&logoColor=white)](https://nextjs.org)
-[![ESP32](https://img.shields.io/badge/firmware-ESP32--S3-e7352c?logo=espressif&logoColor=white)](https://platformio.org)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-3776ab?logo=python&logoColor=white)](pyproject.toml)
+[![Next.js 14](https://img.shields.io/badge/web-Next.js_14-000?logo=nextdotjs&logoColor=white)](web)
+[![ESP32](https://img.shields.io/badge/firmware-ESP32--S3-e7352c?logo=espressif&logoColor=white)](firmware)
 [![ONNX Runtime](https://img.shields.io/badge/inference-ONNX_Runtime-8b5cf6)](https://onnxruntime.ai)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22d3ee)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-214_passing-34d399)]()
-[![Coverage](https://img.shields.io/badge/coverage-firmware%20%2B%20bridge%20%2B%20api-34d399)]()
+[![Tests](https://img.shields.io/badge/tests-214_passing-34d399)](tests)
 
 ---
 
