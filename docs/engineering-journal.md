@@ -857,7 +857,7 @@ multi-month hiatus and resume cleanly.
 
 ### 2026-05-14 — Entry 19: Smooth scroll engine + progress beam
 
-**Commit:** `e3010dd` (feat(web): smooth scroll engine and scroll-progress beam)
+**Commit:** `e2ba675` (feat(web): smooth scroll engine and scroll-progress beam)
 
 **What was done:**
 Added two global enhancements to the root layout: SmoothScroll wraps
@@ -896,7 +896,7 @@ screenshot of the docs ends up in the writeup.
 
 ### 2026-05-16 — Entry 20: Docs primitives + diagram library
 
-**Commit:** `de58deb` (feat(web): docs primitives and diagram library)
+**Commit:** `040072e` (feat(web): docs primitives and diagram library)
 
 **What was done:**
 Created `web/components/docs/` as a design-system layer for the
@@ -938,7 +938,7 @@ front-end as part of the operator-facing instrument story.
 
 ### 2026-05-18 — Entry 21: Page rebuild on primitives + count-up flicker bugfix
 
-**Commit:** `2d112e1` (refactor(web): rebuild /architecture and /methods on docs primitives)
+**Commit:** `d041ebc` (refactor(web): rebuild /architecture and /methods on docs primitives)
 
 **What was done:**
 Rebuilt /architecture and /methods on top of the new primitives.
@@ -996,7 +996,7 @@ animation that could miscalibrate the displayed value.
 
 ### 2026-05-22 — Entry 22: Reference library expansion
 
-**Commit:** `c2efb9d` (docs: expand reference library across paper-notes and the website)
+**Commit:** `89f08aa` (docs: expand reference library across paper-notes and the website)
 
 **What was done:**
 Brought the project's working bibliography in line with what the
@@ -1038,7 +1038,8 @@ C: datasheets, D: ML, E: calibration, F: AL, G: embedded).
 
 ### 2026-05-27 / 28 — Entry 23: Repo hygiene pass
 
-**Commits:** `148dd1f`, `4b4cedd`, `e4168bb`
+**Commits:** `98100f0` (CONTRIBUTING URL + lucide-react drop, combined),
+`1b6062a` (Vercel ONNX deploy fix)
 
 **What was done:**
 Three small but real fixes flushed by an end-of-month audit:
@@ -1081,7 +1082,8 @@ write a paragraph on engineering process.
 
 ### 2026-05-29 / 30 — Entry 24: Lint policy + CI enforcement
 
-**Commits:** `9a39127` (feat(ci)), `775b017` (style: ruff auto-fixes)
+**Commits:** `9cb12ec` (feat(ci): ruff policy + dual lint jobs),
+`ffb8eb3` (style: ruff auto-fixes)
 
 **What was done:**
 Closed a long-standing enforcement gap: `Makefile` already invoked
@@ -1157,7 +1159,7 @@ every push." This is a credible engineering-rigor claim now.
 
 ### 2026-05-31 — Entry 25: Pre-hardware-phase snapshot
 
-**Commit:** `4f80ced` (docs: correct test-module count in README) and the snapshot below.
+**Commit:** `31f4c38` (docs: correct test-module count in README) and the snapshot below.
 
 **What was done:**
 End-of-May audit confirms:
@@ -1226,5 +1228,239 @@ draft of this snapshot underestimated the web delta by undercounting
 the `web/components/docs/` tree.)
 
 **Posture:** The software is hardened. The hardware queue is unchanged.
-The next entry in this journal will be either Entry 26 ("first BOM
-order placed") or it will sit empty until that happens.
+The next entry in this journal will be either a hardware milestone
+("first BOM order placed") or any pre-publication polish that lands
+between now and that order.
+
+---
+
+# June 2026 — Pre-publication polish
+
+A short, sparse run after the May snapshot. No new science, no new
+hardware. The work in this section is governance files, public-facing
+copy hygiene, and one bugfix in the README badge strip — the kind of
+pass you do once, in advance, before linking the repo from anywhere
+that strangers will read it.
+
+---
+
+### 2026-06-01 — Entry 26: Governance files (SECURITY + CODE_OF_CONDUCT)
+
+**Commit:** `0bdc001` (docs: add SECURITY.md with private-disclosure policy)
+
+**What was done:**
+Added the two GitHub-standard community-health files the repo was
+missing. SECURITY.md defines a private-disclosure email address, an
+in-scope / out-of-scope table calibrated for a research instrument
+(remote code execution in the FastAPI service is in scope; "tests
+fail on Python &lt; 3.11" is not), a 7-day acknowledgement SLA, and a
+30-day patch SLA for in-scope issues. CODE_OF_CONDUCT.md is a
+shortened adaptation of Contributor Covenant 2.1, tailored for a
+single-author research project — it explicitly distinguishes between
+encouraged behaviour (technical disagreement, factual corrections)
+and unacceptable behaviour (personal attacks, harassment, off-topic
+disputes). Both files use the same maintainer email and the same
+7-day response commitment.
+
+**Why:**
+The repo is going to be linked from a competition submission and
+potentially from a paper. Anyone arriving from those contexts expects
+to see the standard community-health files; their absence reads as
+sloppiness rather than minimalism. The two files together complete
+the GitHub "community profile" checklist alongside the existing
+CONTRIBUTING.md.
+
+**Discovered / Learned:**
+A public security policy on a research repo doesn't promise a CVE
+hotline — it promises a clear, audited path. The SLA numbers (7-day
+ack, 30-day patch) are the conventional minimum; they're achievable
+for a project of this size as long as I check the inbox.
+
+**Paper impact:**
+None on metrics. Discussion-section bullet on engineering process if
+the paper gets one.
+
+**Open questions:**
+- None.
+
+---
+
+### 2026-06-06 — Entry 27: UI_STANDARDS expanded for the docs surface
+
+**Commit:** `1f20970` (docs(web): UI_STANDARDS now documents the doc-primitives surface)
+
+**What was done:**
+The original `web/UI_STANDARDS.md` was written when the frontend was
+the single console page. With four routes now (the console at `/` and
+three doc pages at `/about`, `/architecture`, `/methods`), the file
+needed to describe both surfaces and the boundary between them. Added
+a "Two surfaces, one aesthetic" section mapping routes to driver
+components and reading mode; a "Doc primitives" catalogue of every
+component under `web/components/docs/` and `DocPage.tsx` with its
+purpose; the "Status escalation palette" section documenting the
+three-colour classifier-status mapping (cyan / amber / rose); and an
+explicit allow-list for the consistent status-indicator dot pattern
+(`inline-block h-1.5 w-1.5 rounded-full`) used across seven
+components — explicitly allowed despite the broader rounded-* ban.
+
+**Why:**
+The doc-primitives layer added in Entry 20 has its own tokens and
+rhythm. Without documenting it, future additions would either
+re-derive the rules from the source or invent variants. A design
+system that exists in code but not in docs decays as soon as another
+contributor (or future me) touches it.
+
+**Paper impact:**
+None.
+
+**Open questions:**
+- Is there value in extracting the docs primitives as a published
+  package so a sibling project under the same umbrella could reuse
+  them? (Probably not until there is a sibling project.)
+
+---
+
+### 2026-06-10 — Entry 28: Journal entries 19–25 land + README community section
+
+**Commit:** `1673e39` (docs: append journal entries 19-25 and link community files from README)
+
+**What was done:**
+Wrote and committed seven new journal entries (19 through 25)
+documenting the May sprint that had been carried in the head — smooth
+scroll, docs primitives, the page rebuild, the count-up flicker
+bugfix, the reference library expansion, the repo hygiene pass, and
+the lint-policy enforcement. Each entry follows the project's
+established template (what / why / discovered / paper impact / open
+questions). Also added a "Contributing & community" section to the
+README linking CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, the
+engineering journal, and the paper notes.
+
+**Why:**
+The journal had been silent since 2026-04-26. Sixteen weeks of work
+not in the journal is sixteen weeks of context that lives only in
+git. Catching the journal up turns the timeline into a single
+readable artefact rather than something that has to be reconstructed
+from `git log`. The README community-section is a small navigation
+fix — discoverability for the governance files added on 2026-06-01.
+
+**Paper impact:**
+The journal is the input to the eventual paper's Methods + Discussion
+sections. Backfilling it now means the paper draft starts from a
+complete record.
+
+**Open questions:**
+- None.
+
+---
+
+### 2026-06-14 — Entry 29: Untrack local editor / tool config files
+
+**Commit:** `f40a7a8` (chore: untrack local editor and tool config files)
+
+**What was done:**
+Broadened `.gitignore` to catch a small set of local scratch and
+editor patterns that don't belong in the repo (`*.local.json` plus
+a few editor-specific scratch directories). None were load-bearing
+for compilation or runtime; they were locally-relevant only.
+
+**Why:**
+The repo should describe what compiles and runs, not what any
+particular editor or scratch tool was leaving on disk. Keeping the
+tracked file set tight means a fresh clone is exactly the project
+and nothing else.
+
+**Paper impact:**
+None.
+
+**Open questions:**
+- None.
+
+---
+
+### 2026-06-18 — Entry 30: Public-facing identity + email standardisation
+
+**Commit:** `7c4da1f` (docs: standardize maintainer contact emails)
+
+**What was done:**
+Two combined passes in one commit: standardised the maintainer email
+in SECURITY.md (`darius.ferent@gmail.com` for security reports) and
+CODE_OF_CONDUCT.md (`FerDa858@school.lu` for community / conduct
+reports), and tightened the public-facing identity in the README
+footer, BibTeX block, and the `/about` eyebrow + SpecList lines —
+removing institution and regional identifiers from contexts where
+they were not load-bearing. The maintainer's name and the competition
+target stayed; everything else was surface-area for fingerprinting
+the project doesn't need. As part of the same audit, also corrected
+two figures in Entry 25's metric snapshot that had drifted (web line
+count and total-commit count) and added a footnote explaining the
+correction. A one-time edit to the append-only journal flagged
+inline so future readers see the correction came from a deliberate
+accuracy pass.
+
+**Why:**
+The project's first public surface is the README and the `/about`
+page. Anyone reading them should see exactly what's needed to
+understand the work and contact the maintainer — nothing more. The
+metric correction is unrelated but landed in the same audit window
+because both came out of the same end-of-cycle review.
+
+**Paper impact:**
+None on metrics. The corrected web line count (≈ 5,200 instead of
+the earlier ≈ 3,300) updates the "scope of the project" paragraph
+that the paper's Methods section will lean on.
+
+**Open questions:**
+- None.
+
+---
+
+### 2026-06-22 — Entry 31: README badge link fixes
+
+**Commit:** `9c01e3c` (docs: fix dead README badge links)
+
+**What was done:**
+Two empty `(badge_link)` link targets in the README's badge strip
+left the Tests and Coverage badges as dead clicks. The Coverage badge
+also claimed coverage with no actual coverage tooling configured —
+deceptive. Removed the Coverage badge, repointed the Tests badge to
+`tests/`, and repointed the technology badges (Python, Next.js,
+ESP32) from generic vendor homepages to relevant in-repo paths
+(`pyproject.toml`, `web/`, `firmware/`). CI and ONNX Runtime badges
+already pointed at sensible targets and were left alone.
+
+**Why:**
+A reader who clicks a badge expects to land somewhere relevant. A
+dead click is a small but measurable trust loss; a misleading
+coverage claim is a larger one. Both were cheap to fix.
+
+**Paper impact:**
+None.
+
+**Open questions:**
+- None.
+
+---
+
+## Updated Metrics Snapshot — 2026-06-22
+
+| Metric                                  | Value (2026-05-31) | Value (2026-06-22) |  Delta |
+|:----------------------------------------|-------------------:|-------------------:|-------:|
+| Total Python lines                      |            ~11,000 |            ~11,000 |      0 |
+| Total firmware lines                    |              1,423 |              1,423 |      0 |
+| Total web lines (TS + TSX)              |             ~5,200 |             ~5,200 |      0 |
+| Total docs lines                        |              1,470 |             ~2,400 |   +930 |
+| Tests passing                           |                214 |                214 |      0 |
+| Test files                              |                 15 |                 15 |      0 |
+| CI jobs                                 |                  5 |                  5 |      0 |
+| Governance files (SECURITY + CoC)       |                  0 |                  2 |     +2 |
+| Real spectra collected                  |                  0 |                  0 |      0 |
+| Hardware components ordered             |                  0 |                  0 |      0 |
+
+(Docs growth — +930 lines — is dominated by the seven new journal
+entries 19–25 plus this June run, the README community section, and
+the expanded UI_STANDARDS. No source code changed in June; only
+copy and process artefacts.)
+
+**Posture:** The repository is publication-ready. Polish is closed
+out. The next entry will be either a hardware milestone ("first BOM
+order placed") or it will sit silent until that happens.
