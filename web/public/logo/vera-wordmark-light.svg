@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300" fill="none" role="img" aria-label="VERA logo, light background">
+  <title>VERA</title>
+  <desc>VERA logo for light backgrounds: bold V mark with spectral ribbon, crescent moon, and lunar horizon, with VERA wordmark below.</desc>
+
+  <path d="M 16 200 Q 120 232 224 200" stroke="#38b3c4" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <path d="M 10 175 Q 120 0 230 85" stroke="#f5b840" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <path d="M 200 24 a 18 18 0 1 0 0 36 a 13 18 0 1 0 0 -36 z" fill="#c8d3da"/>
+  <path d="M 40 28 L 76 28 L 120 121 L 164 28 L 200 28 L 120 198 Z" fill="#0a0d14"/>
+
+  <text x="120" y="272" font-family="'Inter','Space Grotesk',system-ui,-apple-system,sans-serif" font-weight="700" font-size="48" fill="#0a0d14" text-anchor="middle" letter-spacing="7">VERA</text>
+</svg>
