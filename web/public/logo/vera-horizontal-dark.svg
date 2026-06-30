@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" fill="none" role="img" aria-label="VERA horizontal lockup, dark background">
+  <title>VERA horizontal on dark</title>
+  <desc>Horizontal lockup for dark backgrounds: VERA mark with light V silhouette plus VERA wordmark in light type.</desc>
+
+  <g transform="translate(0,-20) scale(0.727)">
+    <path d="M 16 200 Q 120 232 224 200" stroke="#38b3c4" stroke-width="7" fill="none" stroke-linecap="round"/>
+    <path d="M 10 175 Q 120 0 230 85" stroke="#f5b840" stroke-width="9" fill="none" stroke-linecap="round"/>
+    <path d="M 200 24 a 18 18 0 1 0 0 36 a 13 18 0 1 0 0 -36 z" fill="#c8d3da"/>
+    <path d="M 40 28 L 76 28 L 120 121 L 164 28 L 200 28 L 120 198 Z" fill="#e6edf2"/>
+  </g>
+
+  <text x="200" y="100" font-family="'Inter','Space Grotesk',system-ui,-apple-system,sans-serif" font-weight="700" font-size="64" fill="#f0f5f8" letter-spacing="9">VERA</text>
+  <text x="201" y="124" font-family="'Inter','Space Grotesk',system-ui,-apple-system,sans-serif" font-weight="400" font-size="11" fill="#9bb5c2" letter-spacing="2">VISIBLE &amp; EMISSION REGOLITH ASSESSMENT</text>
+</svg>
