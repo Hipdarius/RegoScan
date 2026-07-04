@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" fill="none" role="img" aria-label="VERA mission insignia">
+  <title>VERA mission insignia</title>
+  <desc>Circular mission patch: three converging spectral beams (violet SWIR, amber LIF, teal VIS/NIR) probe a sample point on the lunar surface, with VERA wordmark curved along the upper rim and JONK FUERSCHER MMXXVII along the lower rim.</desc>
+
+  <defs>
+    <clipPath id="vera-inner-scene">
+      <circle cx="120" cy="120" r="92"/>
+    </clipPath>
+    <path id="vera-ring-top" d="M 18,120 A 102,102 0 0 0 222,120" fill="none"/>
+    <path id="vera-ring-bottom" d="M 222,120 A 102,102 0 0 1 18,120" fill="none"/>
+  </defs>
+
+  <circle cx="120" cy="120" r="116" fill="#0a0d14"/>
+  <circle cx="120" cy="120" r="116" fill="none" stroke="#38b3c4" stroke-width="1.6"/>
+  <circle cx="120" cy="120" r="92" fill="none" stroke="#38b3c4" stroke-width="0.7"/>
+
+  <g clip-path="url(#vera-inner-scene)">
+    <g fill="#f0f5f8">
+      <circle cx="58" cy="58" r="0.7" opacity="0.7"/>
+      <circle cx="78" cy="42" r="1" opacity="0.85"/>
+      <circle cx="60" cy="80" r="0.5" opacity="0.5"/>
+      <circle cx="100" cy="38" r="0.6" opacity="0.6"/>
+      <circle cx="142" cy="44" r="0.85" opacity="0.78"/>
+      <circle cx="170" cy="58" r="0.6" opacity="0.55"/>
+      <circle cx="186" cy="80" r="0.9" opacity="0.8"/>
+      <circle cx="190" cy="100" r="0.5" opacity="0.4"/>
+      <circle cx="34" cy="100" r="0.5" opacity="0.4"/>
+      <circle cx="166" cy="34" r="0.75" opacity="0.65"/>
+      <circle cx="92" cy="68" r="0.4" opacity="0.45"/>
+      <circle cx="156" cy="86" r="0.5" opacity="0.5"/>
+    </g>
+
+    <circle cx="120" cy="380" r="248" fill="#1a2230"/>
+    <circle cx="120" cy="380" r="248" fill="none" stroke="#38b3c4" stroke-width="0.5" opacity="0.8"/>
+
+    <ellipse cx="78" cy="158" rx="6.5" ry="2.2" fill="#0a0d14" opacity="0.55"/>
+    <ellipse cx="160" cy="174" rx="5" ry="1.6" fill="#0a0d14" opacity="0.5"/>
+    <ellipse cx="180" cy="200" rx="9" ry="2.8" fill="#0a0d14" opacity="0.5"/>
+    <ellipse cx="44" cy="194" rx="5.5" ry="1.8" fill="#0a0d14" opacity="0.5"/>
+    <ellipse cx="105" cy="190" rx="4" ry="1.3" fill="#0a0d14" opacity="0.4"/>
+
+    <line x1="60" y1="42" x2="120" y2="142" stroke="#a78bfa" stroke-width="2.2" stroke-linecap="round" opacity="0.92"/>
+    <line x1="120" y1="32" x2="120" y2="142" stroke="#f5b840" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="3 2" opacity="0.95"/>
+    <line x1="180" y1="42" x2="120" y2="142" stroke="#38b3c4" stroke-width="2.2" stroke-linecap="round" opacity="0.92"/>
+
+    <circle cx="120" cy="142" r="6.5" fill="#38b3c4" opacity="0.18"/>
+    <circle cx="120" cy="142" r="3.5" fill="#f0f5f8"/>
+    <circle cx="120" cy="142" r="1.8" fill="#38b3c4"/>
+  </g>
+
+  <text font-family="'Inter','Space Grotesk',system-ui,-apple-system,sans-serif" font-size="9.5" fill="#38b3c4" font-weight="500" letter-spacing="3.4">
+    <textPath href="#vera-ring-top" startOffset="50%" text-anchor="middle">VERA · VISIBLE &amp; EMISSION REGOLITH ASSESSMENT</textPath>
+  </text>
+  <text font-family="'Inter','Space Grotesk',system-ui,-apple-system,sans-serif" font-size="9.5" fill="#38b3c4" font-weight="500" letter-spacing="3.4">
+    <textPath href="#vera-ring-bottom" startOffset="50%" text-anchor="middle">IIVXXMM · REHCSREUF KNOJ</textPath>
+  </text>
+
+  <g stroke="#38b3c4" stroke-width="0.9" fill="none" stroke-linecap="round">
+    <line x1="3" y1="120" x2="13" y2="120"/>
+    <line x1="227" y1="120" x2="237" y2="120"/>
+    <line x1="120" y1="3" x2="120" y2="9"/>
+    <line x1="120" y1="231" x2="120" y2="237"/>
+  </g>
+</svg>
