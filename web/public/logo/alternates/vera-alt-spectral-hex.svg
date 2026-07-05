@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="VERA spectral hex, alternative concept">
+  <title>VERA spectral hex</title>
+  <desc>Hexagonal probe enclosure containing five emission-spectrum lines of varying lengths and wavelengths.</desc>
+  <polygon points="32,4 56,18 56,46 32,60 8,46 8,18" fill="#0a0d14" stroke="#22d3ee" stroke-width="2.5" stroke-linejoin="round"/>
+  <line x1="20" y1="22" x2="44" y2="22" stroke="#7c8dff" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="22" y1="28" x2="42" y2="28" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="18" y1="34" x2="46" y2="34" stroke="#22d3ee" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="22" y1="40" x2="42" y2="40" stroke="#fbbf24" stroke-width="1.8" stroke-linecap="round"/>
+  <line x1="20" y1="46" x2="44" y2="46" stroke="#fb923c" stroke-width="1.8" stroke-linecap="round"/>
+</svg>

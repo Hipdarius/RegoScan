@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none" role="img" aria-label="VERA convergent V, alternative concept">
+  <title>VERA convergent V</title>
+  <desc>Three converging spectral beams forming a V at the regolith sample point, above the lunar surface.</desc>
+  <line x1="14" y1="18" x2="40" y2="58" stroke="#7c8dff" stroke-width="6" stroke-linecap="round"/>
+  <line x1="40" y1="12" x2="40" y2="58" stroke="#fbbf24" stroke-width="6" stroke-linecap="round"/>
+  <line x1="66" y1="18" x2="40" y2="58" stroke="#22d3ee" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="40" cy="58" r="6" fill="#0a0d14" stroke="#22d3ee" stroke-width="2"/>
+  <path d="M 14 70 Q 40 76 66 70" stroke="#0a0d14" stroke-width="1.8" fill="none" stroke-linecap="round" opacity="0.55"/>
+</svg>
