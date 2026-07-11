@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { VeraLogo } from "./Logo";
 import { useTheme } from "./ThemeProvider";
 
 const NAV: { href: string; label: string }[] = [
@@ -35,13 +36,15 @@ export function NavBar() {
       aria-label="Primary"
     >
       <ul className="mx-auto flex max-w-6xl items-center gap-6 py-2 font-mono text-[10px] uppercase tracking-[0.25em]">
-        <li className="mr-2 inline-flex items-center gap-2" style={{ color: dim }}>
-          <span
-            className="inline-block h-1.5 w-1.5 rounded-full"
-            style={{ backgroundColor: cyan }}
-            aria-hidden="true"
-          />
-          VERA
+        <li className="mr-2 inline-flex items-center" style={{ color: dim }}>
+          <Link href="/" aria-label="VERA — home" className="inline-flex items-center">
+            <VeraLogo
+              variant="horizontal"
+              className="h-7 w-auto"
+              ariaLabel="VERA"
+              priority
+            />
+          </Link>
         </li>
         {NAV.map((item) => {
           const active = pathname === item.href;
