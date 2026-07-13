@@ -26,6 +26,29 @@ export const metadata: Metadata = {
     "VIS/NIR + 405 nm LIF probe for in-situ lunar regolith mineral classification",
   icons: {
     icon: "/favicon.svg",
+    apple: "/logo/vera-mark.svg",
+  },
+  openGraph: {
+    title: "VERA — Visible & Emission Regolith Assessment",
+    description:
+      "Handheld VIS/NIR + SWIR + LIF probe for real-time lunar regolith mineralogy.",
+    type: "website",
+    siteName: "VERA",
+    images: [
+      {
+        url: "/logo/vera-wordmark-dark.svg",
+        width: 240,
+        height: 300,
+        alt: "VERA logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "VERA — Visible & Emission Regolith Assessment",
+    description:
+      "Handheld VIS/NIR + SWIR + LIF probe for real-time lunar regolith mineralogy.",
+    images: ["/logo/vera-wordmark-dark.svg"],
   },
 };
 
