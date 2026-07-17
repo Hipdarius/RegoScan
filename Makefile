@@ -1,4 +1,19 @@
-.PHONY: test lint lint-fix format typecheck train data-gen firmware-build serve-api serve-web clean
+.PHONY: help test lint lint-fix format typecheck train data-gen firmware-build serve-api serve-web clean
+
+help:
+	@echo "VERA — make targets"
+	@echo ""
+	@echo "  test            run pytest"
+	@echo "  lint            ruff check (Python) + next lint (web)"
+	@echo "  lint-fix        ruff check --fix"
+	@echo "  format          ruff format (rewrites in-place)"
+	@echo "  typecheck       tsc --noEmit (web)"
+	@echo "  train           train cnn_v2 from data/synth_v1.csv"
+	@echo "  data-gen        regenerate synth_v1.csv (400 samples)"
+	@echo "  firmware-build  pio run for the ESP32-S3 target"
+	@echo "  serve-api       uvicorn on 127.0.0.1:8000 (reload)"
+	@echo "  serve-web       next dev (port from web/.env or 3000)"
+	@echo "  clean           drop __pycache__, .pytest_cache, .ruff_cache"
 
 test:
 	uv run pytest tests/ -v
