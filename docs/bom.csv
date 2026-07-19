@@ -1,0 +1,31 @@
+slot,part,vendor_part_number,description,qty,unit_eur,subtotal_eur,notes
+1,Hamamatsu C12880MA,C12880MA,288-channel mini-spectrometer 340-850 nm,1,290.00,290.00,Single-source — no drop-in replacement
+2,AMS AS7265x,SparkFun SEN-15050,18-channel multispectral triad breakout,1,60.00,60.00,Carries AS72651 + AS72652 + AS72653
+3,Hamamatsu G12180-010A,G12180-010A,InGaAs photodiode active dia 1 mm,1,50.00,50.00,SWIR 940/1050 nm sensing
+4,Texas Instruments ADS1115,Adafruit ADS1115,16-bit ADC I2C breakout,1,12.00,12.00,SWIR signal-chain ADC
+5,Texas Instruments OPA380,OPA380AIDR,Transimpedance amplifier for InGaAs,1,8.00,8.00,Low-noise 90 MHz GBP
+6,Narrowband LED 385 nm,LED385W-A33,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 1
+7,Narrowband LED 405 nm,LED405-08,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 2 — distinct from LIF laser
+8,Narrowband LED 455 nm,LED455W-A33,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 3
+9,Narrowband LED 470 nm,LED470W-A33,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 4
+10,Narrowband LED 525 nm,LED525W-A33,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 5
+11,Narrowband LED 590 nm,LED590W-A33,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 6
+12,Narrowband LED 630 nm,LED630W-A33,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 7
+13,Narrowband LED 700 nm,LED700-08,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 8
+14,Narrowband LED 760 nm,LED760-04,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 9
+15,Narrowband LED 810 nm,LED810-08,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 10
+16,Narrowband LED 850 nm,LED850-04,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 11
+17,Narrowband LED 940 nm,LED940-04,Through-hole 5 mm,1,2.50,2.50,Illumination ring slot 12
+18,Narrowband LED 1050 nm,LED1050-04,Through-hole 3 mm,1,14.00,14.00,SWIR-band illumination only
+19,Laser diode 405 nm,DL-LS-405-50,5 mW class IIIa with collimating optic,1,14.00,14.00,LIF excitation source
+20,Long-pass filter 450 nm,Edmund Optics 86-066,12.5 mm dia.,1,4.00,4.00,Block scattered 405 nm pump light
+21,ESP32-S3 DevKitC-1,ESP32-S3-DevKitC-1-N8R8,8 MB flash 8 MB PSRAM,1,22.00,22.00,Main MCU
+22,Thermistor NTC 10k,NTC0603K10,0603 SMD 1% B-value 3950,1,0.50,0.50,Sensor temperature for dark-current correction
+23,Thermistor reference resistors,Yageo 10k 0.1%,0603 SMD 0.1% (×2),1,3.50,3.50,Voltage divider for thermistor
+24,Custom PCB,JLCPCB 4-layer,80 × 60 mm 4-layer ENIG,1,30.00,30.00,Daughterboard for SWIR + thermistor
+25,Probe enclosure,Hammond 1455K1601,Aluminium 160 × 100 × 30 mm,1,28.00,28.00,Hand-held probe shell
+26,USB-C cable,3 m USB-C-to-A,Shielded data cable,1,12.00,12.00,Probe-to-laptop tether
+27,BaSO4 white reference,Spectralon SRT-99-100,100 mm dia. 99% reflectance puck,1,52.00,52.00,Calibration reference (one-time)
+28,Connectors and headers,Various,Pin headers and JST-XH connectors,1,18.00,18.00,Mating pieces for probe assembly
+29,Misc cabling and mounts,Various,Wire jumper and probe mount hardware,1,42.00,42.00,Buffer for assembly variance
+,,,,,TOTAL,658.00,Indicative single-quantity hobbyist pricing
