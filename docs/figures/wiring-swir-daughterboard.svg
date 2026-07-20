@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" fill="none" role="img" aria-label="SWIR daughterboard wiring diagram">
+  <title>SWIR daughterboard wiring diagram</title>
+  <desc>InGaAs photodiode flowing into an OPA380 transimpedance stage, into an ADS1115 16-bit ADC, with the ADC reading sent to the ESP32-S3 over I2C. Two narrowband LEDs (940 nm and 1050 nm) are gated by ESP32 GPIO via a low-side MOSFET driver.</desc>
+
+  <rect width="720" height="420" fill="#0a0d14"/>
+
+  <!-- title -->
+  <text x="24" y="34" font-family="'Inter',sans-serif" font-weight="600" font-size="14" fill="#f0f5f8" letter-spacing="2">SWIR DAUGHTERBOARD · v0.1</text>
+  <text x="24" y="52" font-family="'Inter',sans-serif" font-size="11" fill="#9bb5c2">G12180-010A → OPA380 → ADS1115 → ESP32-S3 (I²C 0x48)</text>
+
+  <!-- legend -->
+  <g font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">
+    <line x1="540" y1="34" x2="555" y2="34" stroke="#38b3c4" stroke-width="2"/><text x="560" y="38">analog</text>
+    <line x1="540" y1="50" x2="555" y2="50" stroke="#f5b840" stroke-width="2"/><text x="560" y="54">control</text>
+    <line x1="610" y1="34" x2="625" y2="34" stroke="#a78bfa" stroke-width="2" stroke-dasharray="3 2"/><text x="630" y="38">I²C</text>
+    <line x1="610" y1="50" x2="625" y2="50" stroke="#94a3b8" stroke-width="2" stroke-dasharray="1 2"/><text x="630" y="54">power</text>
+  </g>
+
+  <!-- InGaAs photodiode -->
+  <g transform="translate(40,150)">
+    <rect x="0" y="0" width="120" height="80" fill="#0b1220" stroke="#38b3c4" stroke-width="1.5" rx="2"/>
+    <text x="60" y="22" text-anchor="middle" font-family="'Inter',sans-serif" font-weight="600" font-size="11" fill="#f0f5f8">InGaAs PD</text>
+    <text x="60" y="38" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">Hamamatsu G12180-010A</text>
+    <text x="60" y="56" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#38b3c4">940 / 1050 nm</text>
+    <text x="60" y="70" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">∅ 1.0 mm active area</text>
+  </g>
+
+  <!-- OPA380 TIA -->
+  <g transform="translate(220,150)">
+    <rect x="0" y="0" width="120" height="80" fill="#0b1220" stroke="#38b3c4" stroke-width="1.5" rx="2"/>
+    <text x="60" y="22" text-anchor="middle" font-family="'Inter',sans-serif" font-weight="600" font-size="11" fill="#f0f5f8">TIA</text>
+    <text x="60" y="38" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">TI OPA380</text>
+    <text x="60" y="56" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#38b3c4">Rf = 1 MΩ</text>
+    <text x="60" y="70" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">Cf = 10 pF</text>
+  </g>
+
+  <!-- ADS1115 ADC -->
+  <g transform="translate(400,150)">
+    <rect x="0" y="0" width="120" height="80" fill="#0b1220" stroke="#38b3c4" stroke-width="1.5" rx="2"/>
+    <text x="60" y="22" text-anchor="middle" font-family="'Inter',sans-serif" font-weight="600" font-size="11" fill="#f0f5f8">ADC</text>
+    <text x="60" y="38" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">TI ADS1115</text>
+    <text x="60" y="56" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#a78bfa">I²C 0x48</text>
+    <text x="60" y="70" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">16-bit · 250 SPS</text>
+  </g>
+
+  <!-- ESP32-S3 -->
+  <g transform="translate(580,140)">
+    <rect x="0" y="0" width="120" height="180" fill="#0b1220" stroke="#f5b840" stroke-width="1.5" rx="2"/>
+    <text x="60" y="22" text-anchor="middle" font-family="'Inter',sans-serif" font-weight="600" font-size="11" fill="#f0f5f8">ESP32-S3</text>
+    <text x="60" y="38" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">DevKitC-1 N8R8</text>
+    <text x="6" y="60" font-family="'Inter',sans-serif" font-size="9" fill="#a78bfa">GPIO 8 / SDA</text>
+    <text x="6" y="74" font-family="'Inter',sans-serif" font-size="9" fill="#a78bfa">GPIO 9 / SCL</text>
+    <text x="6" y="96" font-family="'Inter',sans-serif" font-size="9" fill="#f5b840">GPIO 17 → LED 940</text>
+    <text x="6" y="110" font-family="'Inter',sans-serif" font-size="9" fill="#f5b840">GPIO 18 → LED 1050</text>
+    <text x="6" y="132" font-family="'Inter',sans-serif" font-size="9" fill="#94a3b8">3V3, GND, USB-C</text>
+    <text x="6" y="156" font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">240 MHz · 8 MB PSRAM</text>
+  </g>
+
+  <!-- analog signal -->
+  <line x1="160" y1="190" x2="220" y2="190" stroke="#38b3c4" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="340" y1="190" x2="400" y2="190" stroke="#38b3c4" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="180" y="180" font-family="'Inter',sans-serif" font-size="9" fill="#38b3c4">photo I</text>
+  <text x="356" y="180" font-family="'Inter',sans-serif" font-size="9" fill="#38b3c4">amp V</text>
+
+  <!-- I2C -->
+  <line x1="520" y1="190" x2="580" y2="190" stroke="#a78bfa" stroke-width="2" stroke-dasharray="4 2" marker-end="url(#arrow)"/>
+  <text x="536" y="180" font-family="'Inter',sans-serif" font-size="9" fill="#a78bfa">I²C 100 kHz</text>
+
+  <!-- LED control -->
+  <g transform="translate(40,300)">
+    <rect x="0" y="0" width="160" height="60" fill="#0b1220" stroke="#f5b840" stroke-width="1.5" rx="2"/>
+    <text x="80" y="22" text-anchor="middle" font-family="'Inter',sans-serif" font-weight="600" font-size="11" fill="#f0f5f8">LED · 940 nm</text>
+    <text x="80" y="40" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">N-MOSFET low-side</text>
+    <text x="80" y="54" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#f5b840">Rs = 22 Ω · 20 mA</text>
+  </g>
+  <g transform="translate(220,300)">
+    <rect x="0" y="0" width="160" height="60" fill="#0b1220" stroke="#f5b840" stroke-width="1.5" rx="2"/>
+    <text x="80" y="22" text-anchor="middle" font-family="'Inter',sans-serif" font-weight="600" font-size="11" fill="#f0f5f8">LED · 1050 nm</text>
+    <text x="80" y="40" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#9bb5c2">N-MOSFET low-side</text>
+    <text x="80" y="54" text-anchor="middle" font-family="'Inter',sans-serif" font-size="9" fill="#f5b840">Rs = 56 Ω · 30 mA</text>
+  </g>
+
+  <line x1="120" y1="300" x2="600" y2="222" stroke="#f5b840" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.7"/>
+  <line x1="300" y1="300" x2="600" y2="236" stroke="#f5b840" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.7"/>
+
+  <!-- power rails -->
+  <line x1="40" y1="394" x2="700" y2="394" stroke="#94a3b8" stroke-width="1" stroke-dasharray="1 2" opacity="0.5"/>
+  <text x="40" y="386" font-family="'Inter',sans-serif" font-size="9" fill="#94a3b8">3V3 + GND rails — bypass: 0.1 µF + 10 µF at each IC</text>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#38b3c4"/>
+    </marker>
+  </defs>
+</svg>
