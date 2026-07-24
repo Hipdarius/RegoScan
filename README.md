@@ -401,7 +401,9 @@ Key papers underpinning the design choices, with full annotations in
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — dev setup, branch & commit conventions, schema-version rules
 - **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** — expectations for issues, PRs, and discussion
 - **[SECURITY.md](SECURITY.md)** — how to report a security issue privately
-- **[Engineering journal](docs/engineering-journal.md)** — append-only lab notebook (24+ entries)
+- **[CHANGELOG.md](CHANGELOG.md)** — week-by-week feature and fix log
+- **[Brand guide](docs/brand-guide.md)** — palette, typography, sizing, clearspace
+- **[Engineering journal](docs/engineering-journal.md)** — append-only lab notebook (30+ entries)
 - **[Paper notes](docs/paper-notes.md)** — section tracker + reference library for the eventual writeup
 
 ---
