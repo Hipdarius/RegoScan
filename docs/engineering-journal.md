@@ -1463,4 +1463,155 @@ copy and process artefacts.)
 
 **Posture:** The repository is publication-ready. Polish is closed
 out. The next entry will be either a hardware milestone ("first BOM
-order placed") or it will sit silent until that happens.
+order placed") or any further pre-publication work that surfaces in
+the meantime.
+
+---
+
+# July 2026 — Brand identity + content polish
+
+The May / June work closed the substance side; July is the cosmetic
+side. The project finally has a real identity (V mark, lockups,
+mission patch, brand guide) instead of the placeholder hex glyph,
+and the supporting documentation (BOM CSV, wiring diagram,
+CHANGELOG) lands so the repo is self-contained for a reproducer.
+
+---
+
+### 2026-07-15 — Entry 32: .editorconfig added
+
+**Commit:** `e4e9143` (chore: add .editorconfig for consistent
+tab/whitespace handling)
+
+**What was done:**
+Added `.editorconfig` covering the four file-family conventions
+already in the project: two-space indents for TS / JS / JSON / YAML
+/ Markdown / C++, four-space for Python, tabs for the Makefile, LF
+endings everywhere, trim trailing whitespace, insert final newline.
+
+**Why:**
+EditorConfig is honoured by every modern editor without a per-editor
+plugin needed. Catching the indent / EOL convention in a tracked
+file means a contributor on a different OS / editor doesn't
+accidentally mix CRLF with LF on first save.
+
+**Paper impact:**
+None.
+
+**Open questions:**
+- None.
+
+---
+
+### 2026-07-16 — Entry 33: CHANGELOG.md begins
+
+**Commit:** `2c28b6f` (docs: add CHANGELOG.md with weekly groupings)
+
+**What was done:**
+Added `CHANGELOG.md` following Keep a Changelog. Pre-1.0 entries are
+grouped by ISO week (W15, W16, W17, W19, W22, W26) rather than by
+semantic version since the first tagged release will be the
+competition-submission tag. The file captures the major themes from
+April through June without listing every individual commit.
+
+**Why:**
+The engineering journal is the deep record (per-commit reasoning,
+discovered facts, open questions). The CHANGELOG is the shallow
+record — a contributor or jury member can skim it in 60 seconds and
+know what shipped when. Different artefact, different audience.
+
+**Paper impact:**
+The CHANGELOG and journal together cover the Methods + Results
+narrative arcs the paper will draw from.
+
+**Open questions:**
+- Bump the CHANGELOG to a real `[0.1.0]` section when the
+  competition tag goes up?
+
+---
+
+### 2026-07-19 — Entry 34: Hardware BOM as machine-readable CSV
+
+**Commit:** `ede6862` (docs: add machine-readable BOM at docs/bom.csv)
+
+**What was done:**
+Added `docs/bom.csv` with 28 line items: vendor part numbers, unit
+prices, subtotals, and per-item notes. Mirrors the README's BOM
+table; the CSV is the upstream source the README's table will
+regenerate from at the next polish pass.
+
+**Why:**
+Ordering the BOM is going to be a one-day exercise (parts arrive
+across multiple suppliers). A CSV with vendor-specific part numbers
+makes the Mouser / Digikey / Hamamatsu cart-fill straightforward. It
+also makes the cost line auditable for the jury — every row has a
+vendor citation.
+
+**Paper impact:**
+Instrument Design section gets the BOM table directly from this
+file (LaTeX `csvautotabular` package).
+
+**Open questions:**
+- Some line items (the SMD thermistor + 0.1 % resistors) are
+  combined into single rows. Worth splitting before the order goes
+  in?
+
+---
+
+### 2026-07-20 — Entry 35: SWIR daughterboard wiring diagram
+
+**Commit:** `ca28453` (docs: add SWIR daughterboard wiring diagram)
+
+**What was done:**
+Hand-drawn (well, hand-coded SVG) wiring diagram for the SWIR
+signal chain at `docs/figures/wiring-swir-daughterboard.svg`:
+G12180-010A InGaAs photodiode → OPA380 transimpedance amplifier
+(Rf = 1 MΩ, Cf = 10 pF) → ADS1115 16-bit ADC at I²C 0x48 →
+ESP32-S3 SDA / SCL on GPIO 8 / 9. Two narrowband LEDs (940 nm and
+1050 nm) gated low-side via N-MOSFET on GPIO 17 / 18 with discrete
+current-limiting resistors (22 Ω and 56 Ω respectively).
+
+**Why:**
+The wiring diagram was sitting in my head and wasn't safe there.
+Future me, six weeks from now after the BOM lands, needs the
+component-level layout without re-deriving it from the firmware
+state machine. Also: this is an obvious paper figure for the
+Instrument Design section.
+
+**Discovered / Learned:**
+The 1050 nm LED needs a substantially smaller current-limit
+resistor than the 940 nm because its forward voltage is lower. The
+two LEDs cannot share a current limit and the firmware already
+treats them as independent.
+
+**Paper impact:**
+Instrument Design section gets a referenced figure ("see
+Fig. 3 — SWIR daughterboard wiring").
+
+**Open questions:**
+- The TIA gain (1 MΩ) is a starting point. Real noise floor of the
+  G12180 + OPA380 combination needs measurement; the resistor may
+  need to drop to 100 kΩ if the photodiode dark current dominates.
+
+---
+
+### 2026-07-23 — Entry 36: Web package version bump
+
+**Commit:** `2451b91` (chore(web): bump package version 0.2.0 → 0.2.1)
+
+**What was done:**
+Bumped `web/package.json` from 0.2.0 to 0.2.1 and updated the
+`description` field to mention SWIR (was "VIS/NIR + LIF"). Mirrors
+the README hero strip — same instrument description in two places
+shouldn't drift.
+
+**Why:**
+Consistency between sibling artefacts. A reader who lands on the
+npm-style `package.json` first should see the same description as
+the GitHub landing page.
+
+**Paper impact:**
+None.
+
+**Open questions:**
+- None.
