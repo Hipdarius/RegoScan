@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Brand tokens (mirrors docs/brand-guide.md) ───────────
+   Available in either theme so callers don't need to fork. */
+:root {
+  --vera-base: #0a0d14;
+  --vera-teal: #38b3c4;
+  --vera-amber: #f5b840;
+  --vera-moon: #c8d3da;
+  --vera-light: #f0f5f8;
+  --vera-dim: #9bb5c2;
+}
+
 /* ── Dark theme (default) ──────────────────────────────── */
 :root,
 html.dark {
