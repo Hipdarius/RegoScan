@@ -9,6 +9,19 @@ const config: Config = {
   darkMode: "class",
   theme: {
     extend: {
+      colors: {
+        // Brand tokens — mirrors :root variables from globals.css and the
+        // docs/brand-guide.md palette. Use as `bg-vera-amber`, `text-vera-teal`,
+        // etc. Reserved for the V mark and brand surfaces.
+        vera: {
+          base: "#0a0d14",
+          teal: "#38b3c4",
+          amber: "#f5b840",
+          moon: "#c8d3da",
+          light: "#f0f5f8",
+          dim: "#9bb5c2",
+        },
+      },
       fontFamily: {
         mono: [
           "var(--font-mono)",
