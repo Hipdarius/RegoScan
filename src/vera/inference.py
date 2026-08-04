@@ -1,6 +1,6 @@
 """ONNX-based inference engine for VERA models.
 
-Wraps ``onnxruntime`` to provide a minimal, torch-free prediction path
+Wraps ``onnxruntime`` to provide a minimal torch-free prediction path
 suitable for deployment on Vercel serverless, Raspberry Pi, or any
 environment where PyTorch is too heavy.  The same engine is consumed by
 the FastAPI backend (``apps/api.py``), the ingestion bridge
