@@ -1,7 +1,7 @@
 [project]
 name = "vera"
 version = "0.1.0"
-description = "VERA — Visible & Emission Regolith Assessment probe for lunar mineral classification"
+description = "VERA — handheld VIS/NIR + SWIR + 405 nm LIF probe for in-situ lunar mineral classification"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 authors = [{ name = "Darius Ferent" }]
