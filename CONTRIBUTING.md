@@ -87,7 +87,7 @@ refactor: extract LED sequencing into Illumination module
 
 The type must be one of: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`.
 
-## Schema Contract
+## Schema contract
 
 The spectral schema (`src/vera/schema.py`) defines the canonical column layout used across the entire pipeline -- from firmware JSON frames through training to inference.
 
