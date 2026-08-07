@@ -144,6 +144,8 @@ ALL_COLUMNS: Final[tuple[str, ...]] = (
     LIF_COL,
 )
 
+# Worst case feature count across the three sensor modes — sized for the
+# combined mode (288 spec + 18 as7 + 2 swir + 12 led + 1 lif = 321).
 N_FEATURES_TOTAL: Final[int] = N_SPEC + N_SWIR + N_LED + 1  # 288 + 2 + 12 + 1 = 303
 
 
