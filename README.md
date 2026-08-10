@@ -365,6 +365,7 @@ vera/
 - [x] INT8 lossless quantization
 - [x] Non-blocking ESP32 firmware with adaptive integration
 - [x] mock_esp32 → bridge → API → console end-to-end
+- [ ] Order BOM (≈ €658, see docs/bom.csv)
 - [ ] Solder & assemble the C12880MA + ADS1115 daughterboard
 - [ ] Capture BaSO₄ white reference + reference minerals
 - [ ] Fit temperature scale on real spectra
