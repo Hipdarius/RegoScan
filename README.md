@@ -350,7 +350,7 @@ vera/
 | 12 | Misc. (BaSO₄ puck, cabling, mounts) | 1 | 60 | 60 |
 | | | | **≈ €658** | |
 
-(Indicative pricing, hobbyist / single-quantity. Bulk pricing or substituting the C12880MA with a lower-cost CMOS spectrometer cuts the BOM by ~40 %.)
+(Indicative single-quantity hobbyist pricing / single-quantity. Bulk pricing or substituting the C12880MA with a lower-cost CMOS spectrometer cuts the BOM by ~40 %.)
 
 ---
 
