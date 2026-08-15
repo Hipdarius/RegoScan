@@ -10,7 +10,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Brand tokens — mirrors :root variables from globals.css and the
+        // Brand tokens — mirror :root variables from globals.css and the
         // docs/brand-guide.md palette. Use as `bg-vera-amber`, `text-vera-teal`,
         // etc. Reserved for the V mark and brand surfaces.
         vera: {
