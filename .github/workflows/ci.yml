@@ -60,7 +60,7 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: cd web && npm ci && npx tsc --noEmit
 
-  firmware-build:
+  firmware-build:  # build firmware/ for the ESP32-S3 target via PlatformIO
     name: Build · firmware (PlatformIO)
     runs-on: ubuntu-latest
     timeout-minutes: 5
