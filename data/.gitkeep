@@ -1,0 +1,2 @@
+# data/ holds CSV training tables and the cached endmember .npz.
+# The contents are gitignored (see .gitignore); this file just keeps the dir.
