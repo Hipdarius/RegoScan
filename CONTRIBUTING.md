@@ -64,7 +64,7 @@ All tests must pass before a PR can be merged:
 make test
 ```
 
-Add tests for any new functionality. Tests live in the `tests/` directory and mirror the `src/` layout.
+Add tests for any new functionality. Tests live in the `tests/` directory and mirror the `src/` layout — currently 214 across 15 modules.
 
 ## Branch Naming
 
