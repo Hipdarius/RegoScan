@@ -14,8 +14,19 @@
     }
   },
   "rewrites": [
-    { "source": "/api/meta", "destination": "/api/predict" },
-    { "source": "/api/predict/demo", "destination": "/api/predict" },
-    { "source": "/api/predict/healthz", "destination": "/api/predict" }
-  ]
+    {
+      "source": "/api/meta",
+      "destination": "/api/predict"
+    },
+    {
+      "source": "/api/predict/demo",
+      "destination": "/api/predict"
+    },
+    {
+      "source": "/api/predict/healthz",
+      "destination": "/api/predict"
+    }
+  ],
+  "cleanUrls": true,
+  "trailingSlash": false
 }
