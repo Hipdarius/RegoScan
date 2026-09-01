@@ -251,6 +251,9 @@ make data-gen
 # Train (writes runs/<run-id>/{model.onnx, meta.json})
 make train
 
+# Or run the one-shot bring-up
+bash scripts/setup-bench.sh
+
 # Run the full test suite (214 tests)
 make test
 
