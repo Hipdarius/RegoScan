@@ -94,6 +94,12 @@ def _softmax(x: np.ndarray) -> np.ndarray:
 class InferenceEngine:
     """Lightweight ONNX predictor for the 1D ResNet.
 
+    Example::
+
+        eng = InferenceEngine(Path("runs/cnn_v2/model.onnx"))
+        out = eng.predict(features)  # 321-vector for combined mode
+        print(out["status"], out["confidence"])  # nominal 0.97
+
     Parameters
     ----------
     onnx_path : Path | str
