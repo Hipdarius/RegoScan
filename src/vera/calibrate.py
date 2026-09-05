@@ -306,6 +306,11 @@ def saturation_fraction(raw: np.ndarray, **kw) -> float:
 # ---------------------------------------------------------------------------
 
 
+# Lommel-Seeliger is the right correction for backscattering surfaces
+# like lunar regolith — the 1/(mu0+mu) shape captures the
+# limb-darkening effect of incoherent scattering. Lambertian (in the
+# helper below) is correct for matte calibration targets like
+# Spectralon, where the surface is approximately ideal-diffuse.
 def lommel_seeliger_correction(
     refl: np.ndarray,
     *,
