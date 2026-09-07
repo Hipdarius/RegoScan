@@ -45,6 +45,10 @@ from .uncertainty import classify_uncertainty
 # ---------------------------------------------------------------------------
 
 
+# Default sigma was tuned against the synth-data noise floor — too
+# high and TTA averages over a broader posterior than the model
+# actually sees on real samples; too low and the augmentation is a
+# no-op. Real-sample tuning is the next milestone.
 def tta_predict(
     engine: InferenceEngine,
     features: np.ndarray,
