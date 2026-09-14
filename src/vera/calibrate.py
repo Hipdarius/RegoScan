@@ -544,6 +544,11 @@ class CalibrationProfile:
         )
 
 
+# Five-stage pipeline composed left to right: dark subtract -> per-pixel
+# temp coefficient -> integration normalise -> white reference divide ->
+# photometric correction. Each stage is also exposed as a free function
+# for callers that need to skip a stage (e.g. integration-time
+# normalisation is a no-op for fixed-exposure benches).
 def calibrate_with_profile(
     raw: np.ndarray,
     *,
