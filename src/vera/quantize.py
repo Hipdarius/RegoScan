@@ -270,7 +270,10 @@ def _try_tflite_real(
                     )
                     yield [x]
 
-        converter.representative_dataset = _rep
+        converter.# Static QDQ quantization needs activations sampled at the joint
+# input distribution; ~256 real training samples is the sweet spot —
+# fewer biases activation ranges, more wastes calibration time.
+representative_dataset = _rep
         converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
         converter.inference_input_type = tf.int8
         converter.inference_output_type = tf.int8
