@@ -100,6 +100,10 @@ class AugmentConfig:
     clip_hi: float = 1.5
 
 
+# Augmentations applied only to the 288-channel spectrometer block.
+# LEDs, AS7265x, SWIR, and LIF channels are NOT augmented — adding
+# noise to LED duty values would model an electrical fault rather than
+# a measurement variation, and similarly for the other modalities.
 def augment_spectrum(
     spectrum: np.ndarray,
     rng: np.random.Generator,
