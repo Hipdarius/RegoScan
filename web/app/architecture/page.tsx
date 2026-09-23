@@ -61,7 +61,8 @@ export default function ArchitecturePage() {
             channels; the InGaAs photodiode on a 16-bit ADC samples 940 nm
             and 1050 nm to reach the 1-µm Fe²⁺ band. A 405 nm laser adds a
             fluorescence channel — plagioclase emits in the blue under
-            UV-violet excitation, a property crystal-field theory does not
+            UV-violet excitation — the only channel where the signal source is
+            the sample itself rather than reflected illumination, a property crystal-field theory does not
             capture from reflectance alone. Each channel is chosen to
             resolve a band the others cannot: the fusion is
             information-bearing, not redundant.
