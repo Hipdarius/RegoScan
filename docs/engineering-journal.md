@@ -1187,7 +1187,7 @@ daughterboard, capture BaSO₄ + reference minerals.
 Repo hygiene compounds. The CONTRIBUTING URL bug, the dead
 lucide-react dependency, and the gitignored Vercel model file would
 each have cost a future contributor 5 to 30 minutes. Together, an
-hour of trust. Catching them as a single audit pass is roughly 100 ×
+hour of trust. Catching them as a single audit pass is roughly 100×
 cheaper than catching them one at a time as user reports.
 
 **Paper impact:**
