@@ -400,6 +400,21 @@ Key papers underpinning the design choices, with full annotations in
 
 ---
 
+## 🛡️ Compatibility
+
+| Component | Versions tested |
+|:--|:--|
+| Python | 3.11 · 3.12 |
+| Node | 20 LTS · 22 |
+| OS | Ubuntu 22.04 · macOS 14 · Windows 11 |
+| ESP32-S3 | DevKitC-1 N8R8, Arduino-ESP32 v3 |
+| Browsers | Chrome 120+ · Safari 17+ · Firefox 120+ |
+
+The CI matrix runs Ubuntu only; macOS / Windows are validated manually
+at each major polish pass.
+
+---
+
 ## 🤝 Contributing & community
 
 - **[CONTRIBUTING.md](CONTRIBUTING.md)** — dev setup, branch & commit conventions, schema-version rules
