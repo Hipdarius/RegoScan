@@ -85,7 +85,7 @@ docs: update wiring diagram for rev2 PCB
 refactor: extract LED sequencing into Illumination module
 ```
 
-The type must be one of: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`.
+The type must be one of: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `perf`, `style`, `build`.
 
 ## Schema contract
 
