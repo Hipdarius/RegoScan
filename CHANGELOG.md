@@ -11,6 +11,15 @@ the version submitted to Jonk Fuerscher 2027.
 
 ## [Unreleased]
 
+### Added (Oct)
+- Release checklist at `docs/release-checklist.md`.
+- Data-format reference at `docs/data-format.md`.
+- `web/lib/format.ts` shared display helpers.
+- `web/lib/constants.ts` mirroring `vera.schema` constants in TypeScript.
+- `web/components/SkipLink.tsx` keyboard-a11y skip link.
+- `scripts/check-schema-version.sh` pre-commit hook scaffold.
+
+
 ### Added
 - Project brand identity: V-letterform mark, stacked + horizontal
   lockups (light + dark), monochrome variant, mission-patch insignia,
