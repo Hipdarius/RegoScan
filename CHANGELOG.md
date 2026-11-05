@@ -18,9 +18,9 @@ the version submitted to Jonk Fuerscher 2027.
 - `web/lib/constants.ts` mirroring `vera.schema` constants in TypeScript.
 - `web/components/SkipLink.tsx` keyboard-a11y skip link.
 - `scripts/check-schema-version.sh` pre-commit hook scaffold.
+- `web/lib/brand.ts` type-safe brand-colour access.
 
-
-### Added
+### Added (Sep)
 - Project brand identity: V-letterform mark, stacked + horizontal
   lockups (light + dark), monochrome variant, mission-patch insignia,
   three alternate concepts, and a brand guide at `docs/brand-guide.md`.
