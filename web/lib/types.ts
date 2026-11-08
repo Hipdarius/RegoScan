@@ -1,3 +1,7 @@
+/**
+ * Response types mirroring the FastAPI pydantic models in `apps/api.py`.
+ * When `/api/predict` evolves, update both files together.
+ */
 // Mirrors the Pydantic response models in apps/api.py and web/api/predict.py.
 // Keep these in sync — the response shape is the contract between Python
 // inference and the React UI.
