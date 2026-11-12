@@ -23,7 +23,7 @@ const fontMono = Azeret_Mono({
 export const metadata: Metadata = {
   title: "VERA Mission Console",
   description:
-    "VIS/NIR + 405 nm LIF probe for in-situ lunar regolith mineral classification",
+    "VIS/NIR + SWIR + 405 nm LIF probe for in-situ lunar regolith mineral classification",
   icons: {
     icon: "/favicon.svg",
     apple: "/logo/vera-mark.svg",
