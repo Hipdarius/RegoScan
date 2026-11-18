@@ -422,6 +422,9 @@ at each major polish pass.
 - **[SECURITY.md](SECURITY.md)** — how to report a security issue privately
 - **[CHANGELOG.md](CHANGELOG.md)** — week-by-week feature and fix log
 - **[Brand guide](docs/brand-guide.md)** — palette, typography, sizing, clearspace
+- **[Glossary](docs/glossary.md)** — terms used across the docs and codebase
+- **[Data format](docs/data-format.md)** — canonical CSV column order + sensor modes
+- **[Release checklist](docs/release-checklist.md)** — pre-tag verification steps
 - **[Engineering journal](docs/engineering-journal.md)** — append-only lab notebook (30+ entries)
 - **[Paper notes](docs/paper-notes.md)** — section tracker + reference library for the eventual writeup
 
