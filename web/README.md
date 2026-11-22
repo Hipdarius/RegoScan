@@ -172,3 +172,8 @@ every PR gets its own preview URL.
 | CORS errors in dev | Set `NEXT_PUBLIC_API_BASE=http://127.0.0.1:8000` (the FastAPI app already serves `Access-Control-Allow-Origin: *`). |
 | `next build` fails on a Tailwind class | Check `tailwind.config.ts` — only color utilities support `/<opacity>` modifiers, not custom shadows. |
 | Python function exceeds 50 MB | The default 1D ResNet ONNX is 2.7 MB — well under the limit. If you swap in a much larger model, prune unused deps in `api/requirements.txt` (e.g. drop `pydantic` for `dataclasses`). |
+
+## See also
+
+- [docs/brand-guide.md](../docs/brand-guide.md) — palette, typography, sizing.
+- [web/UI_STANDARDS.md](./UI_STANDARDS.md) — Tailwind class conventions.
